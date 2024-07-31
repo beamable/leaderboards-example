@@ -1,0 +1,8 @@
+{
+    "cid": "1774561898395648",
+    "alias": "georgiana-ion",
+    "pid": "DE_1774561898395651",
+    "platform": "",
+    "socket": "",
+    "containerPrefix": ""
+}
