@@ -60,6 +60,20 @@ namespace Beamable.Server.Clients
         }
         
         /// <summary>
+        /// Call the SetLeaderboardScore method on the BackendService microservice
+        /// <see cref="Beamable.Microservices.BackendService.SetLeaderboardScore"/>
+        /// </summary>
+        public Beamable.Common.Promise<System.Threading.Tasks.Task> SetLeaderboardScore(string leaderboardId, double score)
+        {
+            object raw_leaderboardId = leaderboardId;
+            object raw_score = score;
+            System.Collections.Generic.Dictionary<string, object> serializedFields = new System.Collections.Generic.Dictionary<string, object>();
+            serializedFields.Add("leaderboardId", raw_leaderboardId);
+            serializedFields.Add("score", raw_score);
+            return this.Request<System.Threading.Tasks.Task>("BackendService", "SetLeaderboardScore", serializedFields);
+        }
+        
+        /// <summary>
         /// Call the SetGroupLeaderboard method on the BackendService microservice
         /// <see cref="Beamable.Microservices.BackendService.SetGroupLeaderboard"/>
         /// </summary>

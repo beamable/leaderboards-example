@@ -51,6 +51,20 @@ namespace Beamable.Microservices
         }
         
         [ClientCallable]
+        public async Task SetLeaderboardScore(string leaderboardId, double score)
+        {
+            try
+            {
+                await Services.Leaderboards.SetScore(leaderboardId, score);
+            }
+            catch (Exception e)
+            {
+                System.Console.WriteLine(e);
+                throw;
+            }
+        }
+        
+        [ClientCallable]
         public async Task SetGroupLeaderboard(string eventId)
         {
             try
