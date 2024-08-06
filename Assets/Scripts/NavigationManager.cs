@@ -12,4 +12,9 @@ public class NavigationManager : MonoBehaviour
     {
         SceneManager.LoadScene("ViewGroups");
     }
+    
+    public void LoadEventsLeaderboardScene()
+    {
+        SceneManager.LoadScene("EventsLeaderboard");
+    }
 }

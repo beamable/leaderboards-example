@@ -17,5 +17,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/ViewGroups.unity
     guid: f557eea85afb73c4d821e4f4936e6596
+  - enabled: 1
+    path: Assets/Scenes/EventsLeaderboard.unity
+    guid: 686b22ea887b1524e8d33a9e39be35b8
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: 4adc1339002ffb54d93a09c94f4801b1, type: 2}

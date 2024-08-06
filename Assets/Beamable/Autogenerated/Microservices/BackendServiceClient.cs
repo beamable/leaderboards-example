@@ -58,6 +58,18 @@ namespace Beamable.Server.Clients
             serializedFields.Add("score", raw_score);
             return this.Request<System.Threading.Tasks.Task>("BackendService", "SetScore", serializedFields);
         }
+        
+        /// <summary>
+        /// Call the SetGroupLeaderboard method on the BackendService microservice
+        /// <see cref="Beamable.Microservices.BackendService.SetGroupLeaderboard"/>
+        /// </summary>
+        public Beamable.Common.Promise<System.Threading.Tasks.Task> SetGroupLeaderboard(string eventId)
+        {
+            object raw_eventId = eventId;
+            System.Collections.Generic.Dictionary<string, object> serializedFields = new System.Collections.Generic.Dictionary<string, object>();
+            serializedFields.Add("eventId", raw_eventId);
+            return this.Request<System.Threading.Tasks.Task>("BackendService", "SetGroupLeaderboard", serializedFields);
+        }
     }
     
     internal sealed class MicroserviceParametersBackendServiceClient
