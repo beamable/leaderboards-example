@@ -31,7 +31,7 @@ public class GroupDetails : MonoBehaviour
     [SerializeField]
     private Button leaveGroupButton;
     [SerializeField]
-    private GameObject createRoom;
+    private Button leaderboardButton;
     [SerializeField]
     private GameObject memberItemPrefab;
     [SerializeField]
@@ -73,6 +73,7 @@ public class GroupDetails : MonoBehaviour
 
                 _isLeader = group.members.Exists(member => member.gamerTag == _beamContext.PlayerId && member.role == "leader");
                 leaveGroupButton.gameObject.SetActive(playerInGroup);
+                leaderboardButton.gameObject.SetActive(playerInGroup);
 
                 foreach (Transform child in groupMembersList)
                 {
@@ -89,7 +90,6 @@ public class GroupDetails : MonoBehaviour
                 }
 
                 editGroupButton.gameObject.SetActive(_isLeader);
-                createRoom.gameObject.SetActive(_isLeader);
                 sendInvite.gameObject.SetActive(_isLeader);
             }
             else

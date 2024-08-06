@@ -17,16 +17,14 @@ namespace Beamable.Microservices.UserService
 		{
 			try
 			{
-				Debug.Log(gamerTag.ToString());
 				var playerData = await Storage.GetByFieldName<PlayerData, long>("gamerTag", gamerTag);
 				if (playerData != null && !string.IsNullOrEmpty(playerData.avatarName))
 				{
 					return new Response<string>(playerData.avatarName);
 				}
-				else
-				{
-					return new Response<string>("Avatar name not found");
-				}
+
+				// Return the gamerTag as a string if avatarName is not found
+				return new Response<string>(gamerTag.ToString());
 			}
 			catch (Exception e)
 			{

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Beamable.Common.Models;
 using Beamable.Server;
+using Beamable.Server.Api.Leaderboards;
 using UnityEngine;
 
 namespace Beamable.Microservices
@@ -41,6 +42,34 @@ namespace Beamable.Microservices
             try
             {
                 await Services.Events.SetScore(eventId, score);
+            }
+            catch (Exception e)
+            {
+                System.Console.WriteLine(e);
+                throw;
+            }
+        }
+        
+        [ClientCallable]
+        public async Task SetLeaderboardScore(string leaderboardId, double score)
+        {
+            try
+            {
+                await Services.Leaderboards.SetScore(leaderboardId, score);
+            }
+            catch (Exception e)
+            {
+                System.Console.WriteLine(e);
+                throw;
+            }
+        }
+        
+        [ClientCallable]
+        public async Task SetGroupLeaderboard(string eventId)
+        {
+            try
+            {
+                await Services.Leaderboards.CreateLeaderboard(eventId, new CreateLeaderboardRequest());
             }
             catch (Exception e)
             {
