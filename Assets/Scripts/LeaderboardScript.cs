@@ -1,14 +1,12 @@
 using System;
+using System.Threading.Tasks;
 using Beamable;
+using Beamable.Api;
 using Beamable.Common.Api.Events;
-using Beamable.Common.Api.Leaderboards;
 using Beamable.Server.Clients;
 using Extensions;
-using UnityEngine;
 using TMPro;
-using System.Threading.Tasks;
-using Beamable.Api;
-using UnityEngine.UI;
+using UnityEngine;
 
 public class LeaderboardScript : MonoBehaviour
 {
@@ -19,7 +17,7 @@ public class LeaderboardScript : MonoBehaviour
     [SerializeField] private GameObject rankingItemPrefab;
     [SerializeField] private Transform scrollViewContent;
 
-    async void Start()
+    private async void Start()
     {
         _beamContext = await BeamContext.Default.Instance;
         await _beamContext.OnReady;
@@ -32,7 +30,7 @@ public class LeaderboardScript : MonoBehaviour
 
     private async void OnEventUpdate(EventsGetResponse eventsGetResponse)
     {
-        if (eventsGetResponse?.running == null || eventsGetResponse.running.Count == 0)
+        if (!HasRunningEvents(eventsGetResponse))
         {
             Debug.LogError("No running events found.");
             return;
@@ -44,69 +42,37 @@ public class LeaderboardScript : MonoBehaviour
             Debug.LogError("Event with ID is not running.");
             return;
         }
-
-        var eventId = eventView.id;
-        Debug.Log($"Event ID: {eventId}");
-
+        
         if (string.IsNullOrEmpty(eventView.leaderboardId))
         {
-            await RegisterRandomScore(eventId);
+            await RegisterRandomScore(eventView.id);
         }
         else
         {
-            if (!await LeaderboardExists(eventView.leaderboardId))
-            {
-                await RegisterRandomScore(eventId);
-            }
-            else
-            {
-                await EnsureScoreOnLeaderboard(eventView.leaderboardId, eventId);
-            }
+            await EnsureScoreOnLeaderboard(eventView.leaderboardId, eventView.id);
         }
 
-        var groupId = PlayerPrefs.GetString("SelectedGroupId");
-        if (string.IsNullOrEmpty(groupId))
+        var customLeaderboardId = ConstructCustomLeaderboardId(eventView.id);
+        if (string.IsNullOrEmpty(customLeaderboardId))
         {
             Debug.LogError("Group ID is not set in PlayerPrefs.");
             return;
         }
-
-        var customLeaderboardId = $"event_{eventId}_group_{groupId}";
-        Debug.Log($"Constructed Leaderboard ID: {customLeaderboardId}");
-
+        
         if (!await LeaderboardExists(customLeaderboardId))
         {
-            await _service.SetGroupLeaderboard(customLeaderboardId);
-            await _service.SetLeaderboardScore(customLeaderboardId, GenerateRandomScore());
+            await CreateAndPopulateLeaderboard(customLeaderboardId);
         }
-        
-        var view = await _beamContext.Api.LeaderboardService.GetBoard(customLeaderboardId, 1, 1000);
-        var rankings = view.rankings;
 
-        bool hasScore = rankings.Exists(rankEntry => rankEntry.gt == _beamContext.PlayerId);
-        bool hasZeroScore = rankings.Exists(rankEntry => rankEntry.gt == _beamContext.PlayerId && rankEntry.score == 0);
-        Debug.Log(hasZeroScore);
-        if (!hasScore || hasZeroScore)
-        {
-            // Generate a random score between 0 and 1000
-            double randomScore = GenerateRandomScore();
-            await _service.SetLeaderboardScore(customLeaderboardId, randomScore);
-        }
-        else
-        {
-            Debug.Log("Player already has a score on the leaderboard.");
-        }
-        
+        await EnsurePlayerScoreOnCustomLeaderboard(customLeaderboardId);
         await DisplayLeaderboard(customLeaderboardId);
-        
     }
 
     private async Task RegisterRandomScore(string eventId)
     {
-        double randomScore = GenerateRandomScore();
+        var randomScore = GenerateRandomScore();
         await _service.SetScore(eventId, randomScore);
-        Debug.Log("Score registered " + randomScore);
-
+        Debug.Log($"Score registered: {randomScore}");
     }
 
     private async Task<bool> LeaderboardExists(string leaderboardId)
@@ -116,22 +82,39 @@ public class LeaderboardScript : MonoBehaviour
             await _beamContext.Api.LeaderboardService.GetBoard(leaderboardId, 1, 1);
             return true;
         }
-        catch (PlatformRequesterException e)
+        catch (PlatformRequesterException)
         {
-                Debug.LogWarning($"Leaderboard with ID {leaderboardId} does not exist.");
-                return false;
+            Debug.LogWarning($"Leaderboard with ID {leaderboardId} does not exist.");
+            return false;
         }
     }
 
     private async Task EnsureScoreOnLeaderboard(string leaderboardId, string eventId)
     {
+        var rankings = (await _beamContext.Api.LeaderboardService.GetBoard(leaderboardId, 1, 1000)).rankings;
+
+        if (!rankings.Exists(rankEntry => rankEntry.gt == _beamContext.PlayerId))
+        {
+            await RegisterRandomScore(eventId);
+        }
+        else
+        {
+            Debug.Log("Player already has a score on the leaderboard.");
+        }
+    }
+
+    private async Task EnsurePlayerScoreOnCustomLeaderboard(string leaderboardId)
+    {
         var view = await _beamContext.Api.LeaderboardService.GetBoard(leaderboardId, 1, 1000);
         var rankings = view.rankings;
 
         bool hasScore = rankings.Exists(rankEntry => rankEntry.gt == _beamContext.PlayerId);
-        if (!hasScore)
+        bool hasZeroScore = rankings.Exists(rankEntry => rankEntry.gt == _beamContext.PlayerId && rankEntry.score == 0);
+        Debug.Log(hasZeroScore);
+        if (!hasScore || hasZeroScore)
         {
-            await RegisterRandomScore(eventId);
+            double randomScore = GenerateRandomScore();
+            await _service.SetLeaderboardScore(leaderboardId, randomScore);
         }
         else
         {
@@ -143,26 +126,18 @@ public class LeaderboardScript : MonoBehaviour
     {
         try
         {
-            var view = await _beamContext.Api.LeaderboardService.GetBoard(leaderboardId, 1, 1000);
+            var rankings = (await _beamContext.Api.LeaderboardService.GetBoard(leaderboardId, 1, 1000)).rankings;
+            ClearScrollViewContent();
 
-            foreach (Transform child in scrollViewContent)
-            {
-                Destroy(child.gameObject);
-            }
-
-            foreach (var (rankEntry, index) in view.rankings.WithIndex())
+            foreach (var (rankEntry, _) in rankings.WithIndex())
             {
                 var username = await GetPlayerUsername(rankEntry.gt);
                 CreateRankingItem(username, rankEntry.score.ToString());
             }
         }
-        catch (PlatformRequesterException e)
-        {
-            Debug.LogError($"Error fetching leaderboard: {e.Message}");
-        }
         catch (Exception e)
         {
-            Debug.LogError($"Unexpected error: {e.Message}");
+            Debug.LogError($"Error fetching leaderboard: {e.Message}");
         }
     }
 
@@ -182,8 +157,8 @@ public class LeaderboardScript : MonoBehaviour
 
     private void CreateRankingItem(string username, string score)
     {
-        GameObject rankingItem = Instantiate(rankingItemPrefab, scrollViewContent);
-        TextMeshProUGUI[] texts = rankingItem.GetComponentsInChildren<TextMeshProUGUI>();
+        var rankingItem = Instantiate(rankingItemPrefab, scrollViewContent);
+        var texts = rankingItem.GetComponentsInChildren<TextMeshProUGUI>();
 
         if (texts.Length < 2)
         {
@@ -206,7 +181,31 @@ public class LeaderboardScript : MonoBehaviour
 
     private double GenerateRandomScore()
     {
-        System.Random random = new System.Random();
-        return random.Next(0, 1000);
+        return new System.Random().Next(0, 1000);
+    }
+
+    private void ClearScrollViewContent()
+    {
+        foreach (Transform child in scrollViewContent)
+        {
+            Destroy(child.gameObject);
+        }
+    }
+
+    private string ConstructCustomLeaderboardId(string eventId)
+    {
+        var groupId = PlayerPrefs.GetString("SelectedGroupId");
+        return string.IsNullOrEmpty(groupId) ? null : $"event_{eventId}_group_{groupId}";
+    }
+
+    private async Task CreateAndPopulateLeaderboard(string leaderboardId)
+    {
+        await _service.SetGroupLeaderboard(leaderboardId);
+        await _service.SetLeaderboardScore(leaderboardId, GenerateRandomScore());
+    }
+
+    private static bool HasRunningEvents(EventsGetResponse eventsGetResponse)
+    {
+        return eventsGetResponse?.running != null && eventsGetResponse.running.Count > 0;
     }
 }
