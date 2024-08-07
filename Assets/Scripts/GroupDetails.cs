@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Beamable;
 using Beamable.Server.Clients;
@@ -22,10 +21,6 @@ public class GroupDetails : MonoBehaviour
 
     [SerializeField]
     private TMP_Text groupNameText;
-    [SerializeField]
-    private TMP_Text groupSloganText;
-    [SerializeField]
-    private TMP_Text groupMotdText;
     [SerializeField]
     private Button editGroupButton;
     [SerializeField]
@@ -66,8 +61,6 @@ public class GroupDetails : MonoBehaviour
             if (group != null)
             {
                 groupNameText.text = group.name;
-                groupSloganText.text = group.slogan;
-                groupMotdText.text = group.motd;
 
                 var playerInGroup = group.members.Exists(member => member.gamerTag == _beamContext.PlayerId);
 
@@ -166,11 +159,6 @@ public class GroupDetails : MonoBehaviour
         yield return new WaitForSeconds(5);
         setLeaderPanel.SetActive(false);
     }
-
-    public void LoadEditGroupScene()
-    {
-        SceneManager.LoadScene("EditGroup");
-    }
     
     public async void SendInvitation()
     {
@@ -185,7 +173,7 @@ public class GroupDetails : MonoBehaviour
             inviteInput.text = "";
             Debug.Log("Invitation sent successfully");
         }
-        catch (System.Exception e)
+        catch (Exception e)
         {
             Debug.LogError($"Error sending invitation: {e.Message}");
         }

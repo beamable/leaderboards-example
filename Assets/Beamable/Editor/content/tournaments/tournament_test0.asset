@@ -10,15 +10,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6da5f82a5df104fd4b67a842fafa5c5a, type: 3}
-  m_Name: New_TournamentContent
+  m_Name: tournament_test0
   m_EditorClassIdentifier: 
-  _tags:
-  - base
+  _tags: []
   name: sample
   anchorTimeUTC: 2020-01-01T12:00:00Z
   cycleText: 0
   cycleDuration: P1D
-  playerLimit: 50
+  playerLimit: 0
   tiers:
   - name: Bronze
     color: {r: 0.72156864, g: 0.33333334, b: 0.16078432, a: 1}
@@ -26,7 +25,7 @@ MonoBehaviour:
     color: {r: 0.7921569, g: 0.7921569, b: 0.7921569, a: 1}
   - name: Gold
     color: {r: 0.96862745, g: 0.70980394, b: 0, a: 1}
-  stagesPerTier: 5
+  stagesPerTier: 0
   passiveDecayStages:
     HasValue: 0
     Value: 0
