@@ -5,6 +5,7 @@ using Beamable.Api;
 using Beamable.Common.Api.Events;
 using Beamable.Server.Clients;
 using Extensions;
+using JetBrains.Annotations;
 using TMPro;
 using UnityEngine;
 
@@ -20,7 +21,6 @@ public class LeaderboardScript : MonoBehaviour
     private async void Start()
     {
         _beamContext = await BeamContext.Default.Instance;
-        await _beamContext.OnReady;
 
         _service = new BackendServiceClient();
         _userService = new UserServiceClient();
@@ -52,7 +52,7 @@ public class LeaderboardScript : MonoBehaviour
             await EnsureScoreOnLeaderboard(eventView.leaderboardId, eventView.id);
         }
 
-        var customLeaderboardId = ConstructCustomLeaderboardId(eventView.id);
+        var customLeaderboardId = await ConstructCustomLeaderboardId(eventView.id);
         if (string.IsNullOrEmpty(customLeaderboardId))
         {
             Debug.LogError("Group ID is not set in PlayerPrefs.");
@@ -192,9 +192,12 @@ public class LeaderboardScript : MonoBehaviour
         }
     }
 
-    private string ConstructCustomLeaderboardId(string eventId)
+    [ItemCanBeNull]
+    private async Task<string> ConstructCustomLeaderboardId(string eventId)
     {
         var groupId = PlayerPrefs.GetString("SelectedGroupId");
+        await _service.SetLeaderboardScore($"event_{eventId}_groups", 100);
+        Debug.Log("Set Group score to 100");
         return string.IsNullOrEmpty(groupId) ? null : $"event_{eventId}_group_{groupId}";
     }
 

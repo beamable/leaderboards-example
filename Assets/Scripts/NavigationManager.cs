@@ -17,4 +17,9 @@ public class NavigationManager : MonoBehaviour
     {
         SceneManager.LoadScene("EventsLeaderboard");
     }
+    
+    public void LoadTournamentsLeaderboardScene()
+    {
+        SceneManager.LoadScene("TournamentsLeaderboard");
+    }
 }

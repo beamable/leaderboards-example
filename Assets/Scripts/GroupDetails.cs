@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Beamable;
 using Beamable.Server.Clients;
@@ -23,15 +22,11 @@ public class GroupDetails : MonoBehaviour
     [SerializeField]
     private TMP_Text groupNameText;
     [SerializeField]
-    private TMP_Text groupSloganText;
-    [SerializeField]
-    private TMP_Text groupMotdText;
-    [SerializeField]
-    private Button editGroupButton;
-    [SerializeField]
     private Button leaveGroupButton;
     [SerializeField]
-    private Button leaderboardButton;
+    private Button eventLeaderboardButton;
+    [SerializeField]
+    private Button tournamentLeaderboardButton;
     [SerializeField]
     private GameObject memberItemPrefab;
     [SerializeField]
@@ -66,14 +61,13 @@ public class GroupDetails : MonoBehaviour
             if (group != null)
             {
                 groupNameText.text = group.name;
-                groupSloganText.text = group.slogan;
-                groupMotdText.text = group.motd;
 
                 var playerInGroup = group.members.Exists(member => member.gamerTag == _beamContext.PlayerId);
 
                 _isLeader = group.members.Exists(member => member.gamerTag == _beamContext.PlayerId && member.role == "leader");
                 leaveGroupButton.gameObject.SetActive(playerInGroup);
-                leaderboardButton.gameObject.SetActive(playerInGroup);
+                eventLeaderboardButton.gameObject.SetActive(playerInGroup);
+                tournamentLeaderboardButton.gameObject.SetActive(playerInGroup);
 
                 foreach (Transform child in groupMembersList)
                 {
@@ -88,8 +82,7 @@ public class GroupDetails : MonoBehaviour
                         AddMemberItem(username.data, group.id, member.gamerTag);
                     }
                 }
-
-                editGroupButton.gameObject.SetActive(_isLeader);
+                
                 sendInvite.gameObject.SetActive(_isLeader);
             }
             else
@@ -166,11 +159,6 @@ public class GroupDetails : MonoBehaviour
         yield return new WaitForSeconds(5);
         setLeaderPanel.SetActive(false);
     }
-
-    public void LoadEditGroupScene()
-    {
-        SceneManager.LoadScene("EditGroup");
-    }
     
     public async void SendInvitation()
     {
@@ -185,7 +173,7 @@ public class GroupDetails : MonoBehaviour
             inviteInput.text = "";
             Debug.Log("Invitation sent successfully");
         }
-        catch (System.Exception e)
+        catch (Exception e)
         {
             Debug.LogError($"Error sending invitation: {e.Message}");
         }
