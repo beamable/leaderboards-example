@@ -17,7 +17,7 @@ MonoBehaviour:
   anchorTimeUTC: 2020-01-01T12:00:00Z
   cycleText: 0
   cycleDuration: P1D
-  playerLimit: 0
+  playerLimit: 50
   tiers:
   - name: Bronze
     color: {r: 0.72156864, g: 0.33333334, b: 0.16078432, a: 1}
@@ -25,7 +25,7 @@ MonoBehaviour:
     color: {r: 0.7921569, g: 0.7921569, b: 0.7921569, a: 1}
   - name: Gold
     color: {r: 0.96862745, g: 0.70980394, b: 0, a: 1}
-  stagesPerTier: 0
+  stagesPerTier: 15
   passiveDecayStages:
     HasValue: 0
     Value: 0

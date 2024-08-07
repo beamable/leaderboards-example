@@ -22,11 +22,11 @@ public class GroupDetails : MonoBehaviour
     [SerializeField]
     private TMP_Text groupNameText;
     [SerializeField]
-    private Button editGroupButton;
-    [SerializeField]
     private Button leaveGroupButton;
     [SerializeField]
-    private Button leaderboardButton;
+    private Button eventLeaderboardButton;
+    [SerializeField]
+    private Button tournamentLeaderboardButton;
     [SerializeField]
     private GameObject memberItemPrefab;
     [SerializeField]
@@ -66,7 +66,8 @@ public class GroupDetails : MonoBehaviour
 
                 _isLeader = group.members.Exists(member => member.gamerTag == _beamContext.PlayerId && member.role == "leader");
                 leaveGroupButton.gameObject.SetActive(playerInGroup);
-                leaderboardButton.gameObject.SetActive(playerInGroup);
+                eventLeaderboardButton.gameObject.SetActive(playerInGroup);
+                tournamentLeaderboardButton.gameObject.SetActive(playerInGroup);
 
                 foreach (Transform child in groupMembersList)
                 {
@@ -81,8 +82,7 @@ public class GroupDetails : MonoBehaviour
                         AddMemberItem(username.data, group.id, member.gamerTag);
                     }
                 }
-
-                editGroupButton.gameObject.SetActive(_isLeader);
+                
                 sendInvite.gameObject.SetActive(_isLeader);
             }
             else

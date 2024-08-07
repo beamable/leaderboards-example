@@ -1,13 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Beamable;
-using Beamable.Common.Tournaments;
+using Beamable.Api;
+using Beamable.Common.Api.Tournaments;
 using Beamable.Server.Clients;
 using UnityEngine;
 using TMPro;
-using System.Threading.Tasks;
-using Beamable.Api;
-using Beamable.Common.Api.Tournaments;
 using Extensions;
 
 public class TournamentScript : MonoBehaviour
@@ -15,7 +14,7 @@ public class TournamentScript : MonoBehaviour
     private BeamContext _beamContext;
     private BackendServiceClient _service;
     private UserServiceClient _userService;
-    
+
     private long _userId;
 
     [SerializeField] private GameObject rankingItemPrefab;
@@ -34,8 +33,6 @@ public class TournamentScript : MonoBehaviour
 
         // Get tournaments and join a tournament
         var tournaments = await GetTournaments();
-        
-        // Join the latest one if no specific tournament is found
         var tournamentToJoin = tournaments.Count > 0 ? tournaments[0] : null;
 
         if (tournamentToJoin != null)
@@ -43,7 +40,13 @@ public class TournamentScript : MonoBehaviour
             await JoinTournament(tournamentToJoin.tournamentId);
 
             // Check if leaderboard exists and register score if necessary
-            var leaderboardId = tournamentToJoin.tournamentId;
+            var leaderboardId = await ConstructGroupLeaderboardId(tournamentToJoin.tournamentId);
+            if (string.IsNullOrEmpty(leaderboardId))
+            {
+                Debug.LogError("Group ID is not set in PlayerPrefs.");
+                return;
+            }
+
             if (!await LeaderboardExists(leaderboardId))
             {
                 await CreateAndPopulateLeaderboard(leaderboardId);
@@ -85,7 +88,6 @@ public class TournamentScript : MonoBehaviour
     private async Task CreateAndPopulateLeaderboard(string leaderboardId)
     {
         await _service.SetGroupLeaderboard(leaderboardId);
-        Debug.Log($"leaderboard id: {leaderboardId}");
         await _service.SetLeaderboardScore(leaderboardId, GenerateRandomScore());
     }
 
@@ -126,6 +128,12 @@ public class TournamentScript : MonoBehaviour
         {
             Debug.LogError($"Unexpected error: {e.Message}");
         }
+    }
+
+    private async Task<string> ConstructGroupLeaderboardId(string tournamentId)
+    {
+        var groupId = PlayerPrefs.GetString("SelectedGroupId");
+        return string.IsNullOrEmpty(groupId) ? null : $"{tournamentId}_group_{groupId}";
     }
 
     private async Task<string> GetPlayerUsername(long gamerTag)
