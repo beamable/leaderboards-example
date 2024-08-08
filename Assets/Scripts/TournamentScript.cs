@@ -33,6 +33,12 @@ public class TournamentScript : MonoBehaviour
         _userService = new UserServiceClient();
         _groupManager = new PlayerGroupManager(_beamContext);
 
+        _groupIdString = PlayerPrefs.GetString("SelectedGroupId", string.Empty);
+        if (!string.IsNullOrEmpty(_groupIdString) && long.TryParse(_groupIdString, out var groupId))
+        {
+            await DisplayGroupName(groupId);
+        }
+        
         // Get tournaments and join a tournament
         var tournaments = await GetTournaments();
         var tournamentToJoin = tournaments.Count > 0 ? tournaments[0] : null;
@@ -40,7 +46,7 @@ public class TournamentScript : MonoBehaviour
         if (tournamentToJoin != null)
         {
             await JoinTournament(tournamentToJoin.tournamentId);
-
+            Debug.Log(tournamentToJoin.cycle);
             // Check if leaderboard exists and register score if necessary
             var leaderboardId = await ConstructGroupLeaderboardId(tournamentToJoin.tournamentId);
             if (string.IsNullOrEmpty(leaderboardId))
@@ -66,8 +72,18 @@ public class TournamentScript : MonoBehaviour
     private async Task<List<TournamentInfo>> GetTournaments()
     {
         var response = await _beamContext.Api.TournamentsService.GetAllTournaments();
-        return response?.tournaments ?? new List<TournamentInfo>();
+        var tournaments = response?.tournaments ?? new List<TournamentInfo>();
+
+        // Log all the tournaments
+        Debug.Log("Tournaments fetched:");
+        foreach (var tournament in tournaments)
+        {
+            Debug.Log($"Tournament ID: {tournament.tournamentId}, content id: {tournament.contentId}, Cycle: {tournament.cycle}");
+        }
+
+        return tournaments;
     }
+
 
     private async Task JoinTournament(string tournamentId)
     {
@@ -180,7 +196,7 @@ public class TournamentScript : MonoBehaviour
         return new System.Random().Next(0, 1000);
     }
     
-    private async Task DisplayGroupDetails(long groupId)
+    private async Task DisplayGroupName(long groupId)
     {
         try
         {

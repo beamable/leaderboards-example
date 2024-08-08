@@ -1,23 +1,19 @@
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Beamable;
 using Beamable.Common.Api.Events;
-using Beamable.Server.Clients;
 using Managers;
 using UnityEngine;
 using TMPro;
 
-// Note: There is a known bug where the leaderboard only registers the first group that scores.
+// Note: There is a known bug where the leaderboard only registers the first group that scores into the average score per group leaderboard.
 // This means subsequent groups may not be registered correctly on the leaderboard.
 // This issue needs to be addressed in future updates.
 
 public class AvgEventsLeaderboard : MonoBehaviour
 {
     private BeamContext _beamContext;
-    private BackendServiceClient _service;
     private PlayerGroupManager _groupManager;
-    private UserServiceClient _userService;
 
     [SerializeField] private GameObject rankingItemPrefab;
     [SerializeField] private Transform scrollViewContent;
@@ -28,9 +24,6 @@ public class AvgEventsLeaderboard : MonoBehaviour
 
         _groupManager = new PlayerGroupManager(_beamContext);
         await _groupManager.Initialize();
-
-        _service = new BackendServiceClient();
-        _userService = new UserServiceClient();
         
         _beamContext.Api.EventsService.Subscribe(OnEventUpdate);
     }
