@@ -155,8 +155,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 456308cb8bbc49e4e99f39b1537b759a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rankingItemPrefab: {fileID: 0}
-  scrollViewContent: {fileID: 0}
+  rankingItemPrefab: {fileID: 4563627893532714104, guid: 992db1af0c84f0f47a2a289e0d721635, type: 3}
+  scrollViewContent: {fileID: 935826073}
 --- !u!114 &297703244
 MonoBehaviour:
   m_ObjectHideFlags: 0

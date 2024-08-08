@@ -8,28 +8,30 @@ using Beamable.Server.Clients;
 using UnityEngine;
 using TMPro;
 using Extensions;
+using Managers;
 
 public class TournamentScript : MonoBehaviour
 {
     private BeamContext _beamContext;
     private BackendServiceClient _service;
     private UserServiceClient _userService;
-
-    private long _userId;
+    private string _groupIdString;
+    private PlayerGroupManager _groupManager;
 
     [SerializeField] private GameObject rankingItemPrefab;
     [SerializeField] private Transform scrollViewContent;
+    [SerializeField] private TMP_Text groupNameText;
+
 
     private async void Start()
     {
         // Initialize BeamContext and get the User ID
-        _beamContext = BeamContext.Default;
-        await _beamContext.OnReady;
-        _userId = _beamContext.PlayerId;
+        _beamContext = await BeamContext.Default.Instance;
 
         // Initialize services
         _service = new BackendServiceClient();
         _userService = new UserServiceClient();
+        _groupManager = new PlayerGroupManager(_beamContext);
 
         // Get tournaments and join a tournament
         var tournaments = await GetTournaments();
@@ -176,5 +178,25 @@ public class TournamentScript : MonoBehaviour
     private double GenerateRandomScore()
     {
         return new System.Random().Next(0, 1000);
+    }
+    
+    private async Task DisplayGroupDetails(long groupId)
+    {
+        try
+        {
+            var group = await _groupManager.GetGroup(groupId);
+            if (group != null)
+            {
+                groupNameText.text = group.name;
+            }
+            else
+            {
+                Debug.LogError("Group details are null.");
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error fetching group details: {e.Message}");
+        }
     }
 }
