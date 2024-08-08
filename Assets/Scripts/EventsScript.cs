@@ -6,15 +6,19 @@ using Beamable.Common.Api.Events;
 using Beamable.Server.Clients;
 using Extensions;
 using JetBrains.Annotations;
+using Managers;
 using TMPro;
 using UnityEngine;
 
-public class LeaderboardScript : MonoBehaviour
+public class EventsScript : MonoBehaviour
 {
     private BeamContext _beamContext;
     private BackendServiceClient _service;
     private UserServiceClient _userService;
+    private string _groupIdString;
+    private PlayerGroupManager _groupManager;
 
+    [SerializeField] private TMP_Text groupNameText;
     [SerializeField] private GameObject rankingItemPrefab;
     [SerializeField] private Transform scrollViewContent;
 
@@ -24,6 +28,13 @@ public class LeaderboardScript : MonoBehaviour
 
         _service = new BackendServiceClient();
         _userService = new UserServiceClient();
+        _groupManager = new PlayerGroupManager(_beamContext);
+        
+        _groupIdString = PlayerPrefs.GetString("SelectedGroupId", string.Empty);
+        if (!string.IsNullOrEmpty(_groupIdString) && long.TryParse(_groupIdString, out var groupId))
+        {
+            await DisplayGroupName(groupId);
+        }
 
         _beamContext.Api.EventsService.Subscribe(OnEventUpdate);
     }
@@ -196,8 +207,6 @@ public class LeaderboardScript : MonoBehaviour
     private async Task<string> ConstructCustomLeaderboardId(string eventId)
     {
         var groupId = PlayerPrefs.GetString("SelectedGroupId");
-        await _service.SetLeaderboardScore($"event_{eventId}_groups", 100);
-        Debug.Log("Set Group score to 100");
         return string.IsNullOrEmpty(groupId) ? null : $"event_{eventId}_group_{groupId}";
     }
 
@@ -210,5 +219,25 @@ public class LeaderboardScript : MonoBehaviour
     private static bool HasRunningEvents(EventsGetResponse eventsGetResponse)
     {
         return eventsGetResponse?.running != null && eventsGetResponse.running.Count > 0;
+    }
+    
+    private async Task DisplayGroupName(long groupId)
+    {
+        try
+        {
+            var group = await _groupManager.GetGroup(groupId);
+            if (group != null)
+            {
+                groupNameText.text = group.name;
+            }
+            else
+            {
+                Debug.LogError("Group details are null.");
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error fetching group details: {e.Message}");
+        }
     }
 }
