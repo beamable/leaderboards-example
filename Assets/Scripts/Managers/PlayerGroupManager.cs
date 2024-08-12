@@ -56,7 +56,6 @@ namespace Managers
                     return new Response<long>(default, response.errorMessage);
                 }
             }
-
             // Proceed to create the group
             var groupCreateRequest = new GroupCreateRequest(groupName, groupTag, groupType, minMembers, maxMembers);
             var groupResponse = await _beamContext.Api.GroupsService.CreateGroup(groupCreateRequest);

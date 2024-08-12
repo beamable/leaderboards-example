@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Beamable;
 using Beamable.Api;
 using Beamable.Common.Api.Tournaments;
 using Beamable.Server.Clients;
+using Managers;
 using UnityEngine;
 using TMPro;
-using Extensions;
-using Managers;
 
 public class TournamentScript : MonoBehaviour
 {
@@ -22,68 +22,134 @@ public class TournamentScript : MonoBehaviour
     [SerializeField] private Transform scrollViewContent;
     [SerializeField] private TMP_Text groupNameText;
 
-
     private async void Start()
+{
+    // Initialize BeamContext and services
+    _beamContext = await BeamContext.Default.Instance;
+    _service = new BackendServiceClient();
+    _userService = new UserServiceClient();
+    _groupManager = new PlayerGroupManager(_beamContext);
+
+    // Note: When a player joins a tournament, their current group (if any) is automatically 
+    // registered in the leaderboard by the system. However, if the player switches to a 
+    // different group after already being registered in the tournament, the new group 
+    // will not be automatically registered in the leaderboard. 
+    // Therefore, in such cases, we manually check for the leaderboard's existence 
+    // and create it if necessary. This ensures that the new group can participate in the leaderboard,
+    // even if the system does not automatically handle this scenario.
+    
+    // Load group ID from PlayerPrefs
+    _groupIdString = PlayerPrefs.GetString("SelectedGroupId", string.Empty);
+    if (!string.IsNullOrEmpty(_groupIdString) && long.TryParse(_groupIdString, out var groupId))
     {
-        // Initialize BeamContext and get the User ID
-        _beamContext = await BeamContext.Default.Instance;
+        await DisplayGroupName(groupId);
+    }
 
-        // Initialize services
-        _service = new BackendServiceClient();
-        _userService = new UserServiceClient();
-        _groupManager = new PlayerGroupManager(_beamContext);
+    // Get the active or upcoming tournament
+    var activeTournament = await GetActiveOrUpcomingTournament();
+    if (activeTournament == null)
+    {
+        Debug.LogError("No active or upcoming tournament found.");
+        return;
+    }
 
-        _groupIdString = PlayerPrefs.GetString("SelectedGroupId", string.Empty);
-        if (!string.IsNullOrEmpty(_groupIdString) && long.TryParse(_groupIdString, out var groupId))
-        {
-            await DisplayGroupName(groupId);
-        }
+    // Join the tournament
+    await JoinTournament(activeTournament.tournamentId);
+
+    // Construct the leaderboard ID
+    var leaderboardId = await ConstructGroupLeaderboardId(activeTournament.tournamentId);
+    if (string.IsNullOrEmpty(leaderboardId))
+    {
+        Debug.LogError("Group ID is not set in PlayerPrefs.");
+        return;
+    }
+
+    // Check if the leaderboard exists
+    bool leaderboardExists = await LeaderboardExists(leaderboardId);
+    double score;
+
+    if (!leaderboardExists)
+    {
+        // Generate a score
+        score = GenerateRandomScore();
         
-        // Get tournaments and join a tournament
-        var tournaments = await GetTournaments();
-        var tournamentToJoin = tournaments.Count > 0 ? tournaments[0] : null;
+        // Set the score in the tournament
+        await SetScoreForTournament(activeTournament.tournamentId, score);
 
-        if (tournamentToJoin != null)
+        // Check if the leaderboard now exists
+        leaderboardExists = await LeaderboardExists(leaderboardId);
+        if (!leaderboardExists)
         {
-            await JoinTournament(tournamentToJoin.tournamentId);
-            Debug.Log(tournamentToJoin.cycle);
-            // Check if leaderboard exists and register score if necessary
-            var leaderboardId = await ConstructGroupLeaderboardId(tournamentToJoin.tournamentId);
-            if (string.IsNullOrEmpty(leaderboardId))
-            {
-                Debug.LogError("Group ID is not set in PlayerPrefs.");
-                return;
-            }
-
-            if (!await LeaderboardExists(leaderboardId))
-            {
-                await CreateAndPopulateLeaderboard(leaderboardId);
-            }
-
-            await EnsurePlayerScoreOnLeaderboard(leaderboardId);
-            await DisplayLeaderboard(leaderboardId);
-        }
-        else
-        {
-            Debug.LogError("No suitable tournament found to join.");
+            // Create and populate the leaderboard with the same score
+            await CreateAndPopulateLeaderboard(leaderboardId, score);
         }
     }
+    else
+    {
+        // Ensure the player's score is on the leaderboard
+        await EnsurePlayerScoreOnLeaderboard(leaderboardId);
+    }
+
+    // Display the leaderboard
+    await DisplayLeaderboard(leaderboardId);
+}
+
+    private async Task<TournamentInfo> GetActiveOrUpcomingTournament()
+    {
+        var tournaments = await GetTournaments();
+
+        // Filter to get active and future tournaments
+        var validTournaments = tournaments.Where(t =>
+        {
+            DateTime startTime;
+            DateTime endTime;
+            bool isStartTimeValid = DateTime.TryParse(t.startTimeUtc, out startTime);
+            bool isEndTimeValid = DateTime.TryParse(t.endTimeUtc, out endTime);
+
+            // Consider tournaments that are either currently active or will start in the future
+            return isStartTimeValid && isEndTimeValid && endTime > DateTime.UtcNow;
+        }).ToList();
+
+        if (validTournaments.Any())
+        {
+            // Select the tournament that ends last
+            var tournamentWithLatestEndTime = validTournaments.OrderByDescending(t =>
+            {
+                DateTime endTime;
+                DateTime.TryParse(t.endTimeUtc, out endTime);
+                return endTime;
+            }).FirstOrDefault();
+
+            return tournamentWithLatestEndTime;
+        }
+
+        return null;
+    }
+
+
+
+
 
     private async Task<List<TournamentInfo>> GetTournaments()
     {
         var response = await _beamContext.Api.TournamentsService.GetAllTournaments();
         var tournaments = response?.tournaments ?? new List<TournamentInfo>();
 
-        // Log all the tournaments
-        Debug.Log("Tournaments fetched:");
-        foreach (var tournament in tournaments)
+        if (tournaments.Count > 0)
         {
-            Debug.Log($"Tournament ID: {tournament.tournamentId}, content id: {tournament.contentId}, Cycle: {tournament.cycle}");
+            Debug.Log($"Total tournaments fetched: {tournaments.Count}");
+            foreach (var tournament in tournaments)
+            {
+                Debug.Log($"Tournament ID: {tournament.tournamentId}, Start Time: {tournament.startTimeUtc}, End Time: {tournament.endTimeUtc}, Cycle: {tournament.cycle}");
+            }
         }
-
-        return tournaments;
+        else
+        {
+            Debug.LogWarning("No tournaments found.");
+        }
+        
+        return response?.tournaments ?? new List<TournamentInfo>();
     }
-
 
     private async Task JoinTournament(string tournamentId)
     {
@@ -103,10 +169,23 @@ public class TournamentScript : MonoBehaviour
         }
     }
 
-    private async Task CreateAndPopulateLeaderboard(string leaderboardId)
+    private async Task SetScoreForTournament(string tournamentId, double score)
+    {
+        try
+        {
+            await _beamContext.Api.TournamentsService.SetScore(tournamentId, _beamContext.PlayerId, score);
+            Debug.Log($"Score {score} set for tournament {tournamentId}");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Failed to set score for tournament {tournamentId}: {e.Message}");
+        }
+    }
+
+    private async Task CreateAndPopulateLeaderboard(string leaderboardId, double score)
     {
         await _service.SetGroupLeaderboard(leaderboardId);
-        await _service.SetLeaderboardScore(leaderboardId, GenerateRandomScore());
+        await _service.SetLeaderboardScore(leaderboardId, score);
     }
 
     private async Task EnsurePlayerScoreOnLeaderboard(string leaderboardId)
@@ -148,10 +227,10 @@ public class TournamentScript : MonoBehaviour
         }
     }
 
-    private async Task<string> ConstructGroupLeaderboardId(string tournamentId)
+    private Task<string> ConstructGroupLeaderboardId(string tournamentId)
     {
         var groupId = PlayerPrefs.GetString("SelectedGroupId");
-        return string.IsNullOrEmpty(groupId) ? null : $"{tournamentId}_group_{groupId}";
+        return Task.FromResult(string.IsNullOrEmpty(groupId) ? null : $"{tournamentId}.0.0.group.{groupId}");
     }
 
     private async Task<string> GetPlayerUsername(long gamerTag)
@@ -195,7 +274,7 @@ public class TournamentScript : MonoBehaviour
     {
         return new System.Random().Next(0, 1000);
     }
-    
+
     private async Task DisplayGroupName(long groupId)
     {
         try
