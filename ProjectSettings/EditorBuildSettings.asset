@@ -23,5 +23,11 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/TournamentsLeaderboard.unity
     guid: 08b9de914e1e67f4398252fe46e14cb4
+  - enabled: 1
+    path: Assets/Scenes/AvgTournamentsLeaderboard.unity
+    guid: e374439c06eaa4d4683ad0f7101bb2f1
+  - enabled: 1
+    path: Assets/Scenes/AvgEventsLeaderboard.unity
+    guid: e0542d8b65bd568429dbc4cb71ef4d64
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: 4adc1339002ffb54d93a09c94f4801b1, type: 2}

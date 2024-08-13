@@ -22,4 +22,14 @@ public class NavigationManager : MonoBehaviour
     {
         SceneManager.LoadScene("TournamentsLeaderboard");
     }
+    
+    public void LoadAvgEventsLeaderboardScene()
+    {
+        SceneManager.LoadScene("AvgEventsLeaderboard");
+    }
+    
+    public void LoadAvgTournamentsLeaderboardScene()
+    {
+        SceneManager.LoadScene("AvgTournamentsLeaderboard");
+    }
 }
