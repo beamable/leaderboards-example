@@ -56,20 +56,6 @@ namespace Beamable.Server.Clients
             serializedFields.Add("avatarName", raw_avatarName);
             return this.Request<Beamable.Common.Utils.Response<bool>>("UserService", "SetPlayerAvatarName", serializedFields);
         }
-        
-        /// <summary>
-        /// Call the Test method on the UserService microservice
-        /// <see cref="Beamable.Microservices.UserService.UserService.Test"/>
-        /// </summary>
-        public Beamable.Common.Promise<string> Test(long lala, string lalala)
-        {
-            object raw_lala = lala;
-            object raw_lalala = lalala;
-            System.Collections.Generic.Dictionary<string, object> serializedFields = new System.Collections.Generic.Dictionary<string, object>();
-            serializedFields.Add("lala", raw_lala);
-            serializedFields.Add("lalala", raw_lalala);
-            return this.Request<string>("UserService", "Test", serializedFields);
-        }
     }
     
     internal sealed class MicroserviceParametersUserServiceClient

@@ -68,14 +68,30 @@ namespace Beamable.Microservices
         {
             try
             {
+                // Fetch the leaderboard data
                 var leaderboardData = await Storage.GetByFieldName<LeaderboardData, string>("leaderboardName", leaderboardName);
+        
+                // Check if the leaderboard exists and the group is in the banned list
                 if (leaderboardData == null || !leaderboardData.bannedGroupIds.Contains(targetGroupId))
+                {
                     return new Response<bool>(false, "Group not found in the banned list");
+                }
 
+                // Remove the group from the banned list
                 leaderboardData.bannedGroupIds.Remove(targetGroupId);
-                await Storage.Update(leaderboardData.Id, leaderboardData);
-                return new Response<bool>(true);
 
+                // If no more groups are banned, remove the leaderboard from storage
+                if (leaderboardData.bannedGroupIds.Count == 0)
+                {
+                    await Storage.Delete<LeaderboardData>(leaderboardData.Id);
+                }
+                else
+                {
+                    // Update the leaderboard data if there are still banned groups
+                    await Storage.Update(leaderboardData.Id, leaderboardData);
+                }
+
+                return new Response<bool>(true);
             }
             catch (Exception e)
             {
@@ -83,6 +99,7 @@ namespace Beamable.Microservices
                 return new Response<bool>(false, "Error unbanning group");
             }
         }
+
         
         [ClientCallable]
         public async Promise<Response<List<LeaderboardData>>> GetAllLeaderboardsWithBannedGroups()
