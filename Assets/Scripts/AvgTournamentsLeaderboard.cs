@@ -5,12 +5,15 @@ using System.Threading.Tasks;
 using Beamable;
 using Beamable.Api;
 using Beamable.Common.Api.Tournaments;
+using Beamable.Server.Clients;
 using UnityEngine;
 using TMPro;
+using UnityEngine.UI;
 
 public class AvgTournamentLeaderboard : MonoBehaviour
 {
     private BeamContext _beamContext;
+    private BackendGroupServiceClient _backendGroupService;
 
     [SerializeField] private GameObject rankingItemPrefab;
     [SerializeField] private Transform scrollViewContent;
@@ -20,6 +23,8 @@ public class AvgTournamentLeaderboard : MonoBehaviour
         // Initialize BeamContext and services
         _beamContext = await BeamContext.Default.Instance;
         
+        _backendGroupService = new BackendGroupServiceClient();
+
         // Get the active or upcoming tournament
         var activeTournament = await GetActiveOrUpcomingTournament();
         if (activeTournament == null)
@@ -82,17 +87,18 @@ public class AvgTournamentLeaderboard : MonoBehaviour
     {
         try
         {
+            // Fetch banned groups for this leaderboard
+            var bannedGroupsResponse = await _backendGroupService.GetBannedGroups(leaderboardId);
+            var bannedGroups = bannedGroupsResponse.data ?? new List<long>();
+
             var view = await _beamContext.Api.LeaderboardService.GetBoard(leaderboardId, 1, 1000);
+            var rankings = view.rankings;
+            ClearScrollViewContent();
 
-            foreach (Transform child in scrollViewContent)
-            {
-                Destroy(child.gameObject);
-            }
-
-            foreach (var rankEntry in view.rankings)
+            foreach (var rankEntry in rankings.Where(rankEntry => !bannedGroups.Contains(rankEntry.gt)))
             {
                 var groupName = await GetGroupName(rankEntry.gt);
-                CreateRankingItem(groupName, rankEntry.score.ToString());
+                CreateRankingItem(groupName, rankEntry.score.ToString(), rankEntry.gt, leaderboardId);
             }
         }
         catch (PlatformRequesterException e)
@@ -110,12 +116,7 @@ public class AvgTournamentLeaderboard : MonoBehaviour
         try
         {
             var group = await _beamContext.Api.GroupsService.GetGroup(groupId);
-            if (group != null)
-            {
-                return group.name;
-            }
-
-            return groupId.ToString();
+            return group != null ? group.name : groupId.ToString();
         }
         catch (Exception e)
         {
@@ -124,10 +125,10 @@ public class AvgTournamentLeaderboard : MonoBehaviour
         }
     }
 
-    private void CreateRankingItem(string groupName, string score)
+    private void CreateRankingItem(string groupName, string score, long groupId, string leaderboardId)
     {
-        GameObject rankingItem = Instantiate(rankingItemPrefab, scrollViewContent);
-        TextMeshProUGUI[] texts = rankingItem.GetComponentsInChildren<TextMeshProUGUI>();
+        var rankingItem = Instantiate(rankingItemPrefab, scrollViewContent);
+        var texts = rankingItem.GetComponentsInChildren<TextMeshProUGUI>();
 
         if (texts.Length < 2)
         {
@@ -137,14 +138,37 @@ public class AvgTournamentLeaderboard : MonoBehaviour
 
         foreach (var text in texts)
         {
-            if (text.name == "GamerTag")
+            text.text = text.name switch
             {
-                text.text = groupName;
-            }
-            else if (text.name == "Score")
-            {
-                text.text = score;
-            }
+                "GroupName" => groupName,
+                "Score" => score,
+                _ => text.text
+            };
+        }
+
+        var banButton = rankingItem.GetComponentInChildren<Button>();
+        banButton.onClick.AddListener(async () => await BanGroup(groupId, leaderboardId));
+    }
+
+    private async Task BanGroup(long groupId, string leaderboardId)
+    {
+        var response = await _backendGroupService.BanGroup(leaderboardId, groupId);
+        if (response.data)
+        {
+            // Refresh the leaderboard after banning the group
+            await DisplayGroupLeaderboard(leaderboardId);
+        }
+        else
+        {
+            Debug.LogError($"Error banning group: {response.errorMessage}");
+        }
+    }
+
+    private void ClearScrollViewContent()
+    {
+        foreach (Transform child in scrollViewContent)
+        {
+            Destroy(child.gameObject);
         }
     }
 }
