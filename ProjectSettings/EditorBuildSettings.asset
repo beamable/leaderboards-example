@@ -21,6 +21,9 @@ EditorBuildSettings:
     path: Assets/Scenes/EventsLeaderboard.unity
     guid: 686b22ea887b1524e8d33a9e39be35b8
   - enabled: 1
+    path: Assets/Scenes/BannedGroups.unity
+    guid: c13a157c9d3b1e34b8e1e9b54f500a02
+  - enabled: 1
     path: Assets/Scenes/TournamentsLeaderboard.unity
     guid: 08b9de914e1e67f4398252fe46e14cb4
   - enabled: 1

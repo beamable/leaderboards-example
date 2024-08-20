@@ -37,6 +37,18 @@ MonoBehaviour:
       SshPort: 11101
     LastBuiltCheckSum: 
     RobotId: 
+  - ServiceName: BackendGroupService
+    Enabled: 1
+    Archived: 0
+    TemplateId: small
+    CustomDockerFileStrings: 
+    IncludeDebugTools: 0
+    DebugData:
+      Username: root
+      Password: Password!
+      SshPort: 11102
+    LastBuiltCheckSum: 
+    RobotId: 
   StorageObjects:
   - StorageName: UserGroupData
     StorageType: mongov1
@@ -45,6 +57,15 @@ MonoBehaviour:
     TemplateId: small
     LocalDataPort: 12100
     LocalUIPort: 13100
+    LocalInitUser: beamable
+    LocalInitPass: beamable
+  - StorageName: BackendGroupStorage
+    StorageType: mongov1
+    Enabled: 1
+    Archived: 0
+    TemplateId: small
+    LocalDataPort: 12101
+    LocalUIPort: 13101
     LocalInitUser: beamable
     LocalInitPass: beamable
   ServiceCodeHandlesOnLastDomainReload:

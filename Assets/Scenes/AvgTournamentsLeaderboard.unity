@@ -573,7 +573,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 281b4932634047ce81c8ea7ad43d5fa1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rankingItemPrefab: {fileID: 4563627893532714104, guid: 992db1af0c84f0f47a2a289e0d721635, type: 3}
+  rankingItemPrefab: {fileID: 3374407408165572111, guid: 497ac17d7dbda8b4c870dda696d64980, type: 3}
   scrollViewContent: {fileID: 1676430237}
 --- !u!1 &500410337
 GameObject:
@@ -1415,11 +1415,11 @@ RectTransform:
   m_Father: {fileID: 1591942377}
   m_RootOrder: -1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 4.5, y: -51.039993}
-  m_SizeDelta: {x: 391.71, y: 352.77}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 1.9985046, y: -190.65498}
+  m_SizeDelta: {x: -19.640015, y: 352.77002}
+  m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &2100312052
 MonoBehaviour:
   m_ObjectHideFlags: 0

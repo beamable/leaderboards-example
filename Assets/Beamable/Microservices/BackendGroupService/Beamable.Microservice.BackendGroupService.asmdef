@@ -1,5 +1,5 @@
 {
-    "name": "Beamable.Microservice.BackendService",
+    "name": "Beamable.Microservice.BackendGroupService",
     "rootNamespace": "",
     "references": [
         "Unity.Beamable.Runtime.Common",
