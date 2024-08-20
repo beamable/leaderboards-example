@@ -32,4 +32,9 @@ public class NavigationManager : MonoBehaviour
     {
         SceneManager.LoadScene("AvgTournamentsLeaderboard");
     }
+    
+    public void LoadBannedGroupsScene()
+    {
+        SceneManager.LoadScene("BannedGroups");
+    }
 }

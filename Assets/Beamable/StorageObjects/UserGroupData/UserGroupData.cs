@@ -134,6 +134,21 @@ namespace Beamable.Server
 			this IStorageObjectConnectionProvider provider, Expression<Func<T, TValue>> field,
 			IEnumerable<TValue> values) where T : StorageDocument
 			=> Builders<T>.Filter.In(field, values);
+		
+		/// <summary>
+		/// Deletes the document with the given ID from the storage.
+		/// </summary>
+		/// <typeparam name="T">A <see cref="StorageDocument"/> derived type you want to delete.</typeparam>
+		/// <param name="provider">The storage object connection provider.</param>
+		/// <param name="id">The ID of the document to delete.</param>
+		/// <returns>True if the document was deleted; false otherwise.</returns>
+		public static async Promise<bool> Delete<T>(this IStorageObjectConnectionProvider provider, string id)
+			where T : StorageDocument
+		{
+			var collection = await provider.GetCollection<UserGroupData, T>();
+			var result = await collection.DeleteOneAsync(provider.GetFilterById<T>(id));
+			return result.DeletedCount > 0;
+		}
 	}
 	
 	

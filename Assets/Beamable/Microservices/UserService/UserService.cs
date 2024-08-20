@@ -71,14 +71,5 @@ namespace Beamable.Microservices.UserService
 				return new Response<bool>(false, "Error setting avatar name");
 			}
 		}
-
-		
-		[ClientCallable]
-		public string Test(long lala, string lalala)
-		{
-			Debug.Log("Testt");
-			return "test";
-
-		}
 	}
 }

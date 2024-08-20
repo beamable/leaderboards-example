@@ -1,10 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Beamable;
 using Beamable.Common.Api.Events;
+using Beamable.Server.Clients;
 using Managers;
 using UnityEngine;
 using TMPro;
+using UnityEngine.UI;
 
 // Note: There is a known bug where the leaderboard only registers the first group that scores into the average score per group leaderboard.
 // This means subsequent groups may not be registered correctly on the leaderboard.
@@ -14,6 +17,8 @@ public class AvgEventsLeaderboard : MonoBehaviour
 {
     private BeamContext _beamContext;
     private PlayerGroupManager _groupManager;
+    private BackendGroupServiceClient _backendGroupService;
+
 
     [SerializeField] private GameObject rankingItemPrefab;
     [SerializeField] private Transform scrollViewContent;
@@ -21,7 +26,8 @@ public class AvgEventsLeaderboard : MonoBehaviour
     private async void Start()
     {
         _beamContext = await BeamContext.Default.Instance;
-
+        
+        _backendGroupService = new BackendGroupServiceClient();
         _groupManager = new PlayerGroupManager(_beamContext);
         await _groupManager.Initialize();
         
@@ -56,14 +62,21 @@ public class AvgEventsLeaderboard : MonoBehaviour
     {
         try
         {
+            // Fetch banned groups for this leaderboard
+            var bannedGroupsResponse = await _backendGroupService.GetBannedGroups(leaderboardId);
+            var bannedGroups = bannedGroupsResponse.data ?? new List<long>();
+
             var view = await _beamContext.Api.LeaderboardService.GetBoard(leaderboardId, 1, 1000);
             var rankings = view.rankings;
             ClearScrollViewContent();
 
             foreach (var rankEntry in rankings)
             {
-                var groupName = await GetGroupName(rankEntry.gt);
-                CreateRankingItem(groupName, rankEntry.score.ToString());
+                if (!bannedGroups.Contains(rankEntry.gt))
+                {
+                    var groupName = await GetGroupName(rankEntry.gt);
+                    CreateRankingItem(groupName, rankEntry.score.ToString(), rankEntry.gt, leaderboardId);
+                }
             }
         }
         catch (Exception e)
@@ -71,6 +84,7 @@ public class AvgEventsLeaderboard : MonoBehaviour
             Debug.LogError($"Error fetching leaderboard: {e.Message}");
         }
     }
+
 
     private async Task<string> GetGroupName(long groupId)
     {
@@ -92,7 +106,7 @@ public class AvgEventsLeaderboard : MonoBehaviour
         }
     }
 
-    private void CreateRankingItem(string groupName, string score)
+    private void CreateRankingItem(string groupName, string score, long groupId, string leaderboardId)
     {
         var rankingItem = Instantiate(rankingItemPrefab, scrollViewContent);
         var texts = rankingItem.GetComponentsInChildren<TextMeshProUGUI>();
@@ -105,7 +119,7 @@ public class AvgEventsLeaderboard : MonoBehaviour
 
         foreach (var text in texts)
         {
-            if (text.name == "GamerTag")
+            if (text.name == "GroupName")
             {
                 text.text = groupName;
             }
@@ -114,7 +128,25 @@ public class AvgEventsLeaderboard : MonoBehaviour
                 text.text = score;
             }
         }
+
+        var banButton = rankingItem.GetComponentInChildren<Button>();
+        banButton.onClick.AddListener(async () => await BanGroup(groupId, leaderboardId));
     }
+
+    private async Task BanGroup(long groupId, string leaderboardId)
+    {
+        var response = await _backendGroupService.BanGroup(leaderboardId, groupId);
+        if (response.data)
+        {
+            // Refresh the leaderboard after banning the group
+            await DisplayGroupLeaderboard(leaderboardId);
+        }
+        else
+        {
+            Debug.LogError($"Error banning group: {response.errorMessage}");
+        }
+    }
+
 
     private void ClearScrollViewContent()
     {
