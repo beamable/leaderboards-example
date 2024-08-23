@@ -37,11 +37,18 @@ namespace Beamable.Microservices
         }
         
         [ClientCallable]
-        public async Task SetScore(string eventId, double score)
+        public async Task SetEventScore(string eventId, double score, Dictionary<string, object> stats = null)
         {
             try
             {
-                await Services.Events.SetScore(eventId, score);
+                if (stats != null)
+                {
+                    await Services.Events.SetScore(eventId, score, false, stats);
+                }
+                else
+                {
+                    await Services.Events.SetScore(eventId, score);
+                }
             }
             catch (Exception e)
             {
@@ -79,5 +86,19 @@ namespace Beamable.Microservices
         }
 
 
+        [ClientCallable]
+        public async Task SetStats(string statKey, string newValue)
+        {
+            const string access = "public";
+            
+            Dictionary<string, string> resetStats = new Dictionary<string, string>() 
+            {
+                { statKey, newValue }
+            };
+
+            await Services.Stats.SetStats(access, resetStats);
+            Debug.Log("success");
+
+        }
     }
 }

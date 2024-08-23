@@ -46,17 +46,19 @@ namespace Beamable.Server.Clients
         }
         
         /// <summary>
-        /// Call the SetScore method on the BackendService microservice
-        /// <see cref="Beamable.Microservices.BackendService.SetScore"/>
+        /// Call the SetEventScore method on the BackendService microservice
+        /// <see cref="Beamable.Microservices.BackendService.SetEventScore"/>
         /// </summary>
-        public Beamable.Common.Promise<System.Threading.Tasks.Task> SetScore(string eventId, double score)
+        public Beamable.Common.Promise<System.Threading.Tasks.Task> SetEventScore(string eventId, double score, System.Collections.Generic.Dictionary<string, object> stats)
         {
             object raw_eventId = eventId;
             object raw_score = score;
+            object raw_stats = stats;
             System.Collections.Generic.Dictionary<string, object> serializedFields = new System.Collections.Generic.Dictionary<string, object>();
             serializedFields.Add("eventId", raw_eventId);
             serializedFields.Add("score", raw_score);
-            return this.Request<System.Threading.Tasks.Task>("BackendService", "SetScore", serializedFields);
+            serializedFields.Add("stats", raw_stats);
+            return this.Request<System.Threading.Tasks.Task>("BackendService", "SetEventScore", serializedFields);
         }
         
         /// <summary>
@@ -84,6 +86,20 @@ namespace Beamable.Server.Clients
             serializedFields.Add("eventId", raw_eventId);
             return this.Request<System.Threading.Tasks.Task>("BackendService", "SetGroupLeaderboard", serializedFields);
         }
+        
+        /// <summary>
+        /// Call the SetStats method on the BackendService microservice
+        /// <see cref="Beamable.Microservices.BackendService.SetStats"/>
+        /// </summary>
+        public Beamable.Common.Promise<System.Threading.Tasks.Task> SetStats(string statKey, string newValue)
+        {
+            object raw_statKey = statKey;
+            object raw_newValue = newValue;
+            System.Collections.Generic.Dictionary<string, object> serializedFields = new System.Collections.Generic.Dictionary<string, object>();
+            serializedFields.Add("statKey", raw_statKey);
+            serializedFields.Add("newValue", raw_newValue);
+            return this.Request<System.Threading.Tasks.Task>("BackendService", "SetStats", serializedFields);
+        }
     }
     
     internal sealed class MicroserviceParametersBackendServiceClient
@@ -101,6 +117,11 @@ namespace Beamable.Server.Clients
         
         [System.SerializableAttribute()]
         internal sealed class ParameterSystem_Double : MicroserviceClientDataWrapper<double>
+        {
+        }
+        
+        [System.SerializableAttribute()]
+        internal sealed class ParameterSystem_Collections_Generic_Dictionary_System_String_System_Object : MicroserviceClientDataWrapper<System.Collections.Generic.Dictionary<string, object>>
         {
         }
     }

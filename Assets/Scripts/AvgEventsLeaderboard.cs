@@ -72,6 +72,7 @@ public class AvgEventsLeaderboard : MonoBehaviour
 
             foreach (var rankEntry in rankings)
             {
+                
                 if (!bannedGroups.Contains(rankEntry.gt))
                 {
                     var groupName = await GetGroupName(rankEntry.gt);
