@@ -100,6 +100,30 @@ namespace Beamable.Server.Clients
             serializedFields.Add("newValue", raw_newValue);
             return this.Request<System.Threading.Tasks.Task>("BackendService", "SetStats", serializedFields);
         }
+        
+        /// <summary>
+        /// Call the JoinTournament method on the BackendService microservice
+        /// <see cref="Beamable.Microservices.BackendService.JoinTournament"/>
+        /// </summary>
+        public Beamable.Common.Promise<System.Threading.Tasks.Task> JoinTournament(string tournamentId)
+        {
+            object raw_tournamentId = tournamentId;
+            System.Collections.Generic.Dictionary<string, object> serializedFields = new System.Collections.Generic.Dictionary<string, object>();
+            serializedFields.Add("tournamentId", raw_tournamentId);
+            return this.Request<System.Threading.Tasks.Task>("BackendService", "JoinTournament", serializedFields);
+        }
+        
+        /// <summary>
+        /// Call the ClaimAllRewards method on the BackendService microservice
+        /// <see cref="Beamable.Microservices.BackendService.ClaimAllRewards"/>
+        /// </summary>
+        public Beamable.Common.Promise<Beamable.Common.Api.Tournaments.TournamentRewardsResponse> ClaimAllRewards(string tournamentId)
+        {
+            object raw_tournamentId = tournamentId;
+            System.Collections.Generic.Dictionary<string, object> serializedFields = new System.Collections.Generic.Dictionary<string, object>();
+            serializedFields.Add("tournamentId", raw_tournamentId);
+            return this.Request<Beamable.Common.Api.Tournaments.TournamentRewardsResponse>("BackendService", "ClaimAllRewards", serializedFields);
+        }
     }
     
     internal sealed class MicroserviceParametersBackendServiceClient
