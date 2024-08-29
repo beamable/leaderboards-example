@@ -16,6 +16,7 @@ public class EventsScript : MonoBehaviour
     private BackendServiceClient _service;
     private UserServiceClient _userService;
     private string _groupIdString;
+    private string _currentEventId;
     private PlayerGroupManager _groupManager;
 
     [SerializeField] private TMP_Text groupNameText;
@@ -24,7 +25,6 @@ public class EventsScript : MonoBehaviour
 
     private async void Start()
     {
-        Debug.Log("Starting EventsScript...");
         _beamContext = await BeamContext.Default.Instance;
 
         _service = new BackendServiceClient();
@@ -42,7 +42,6 @@ public class EventsScript : MonoBehaviour
 
     private async void OnEventUpdate(EventsGetResponse eventsGetResponse)
     {
-        Debug.Log("Received event update...");
         if (!HasRunningEvents(eventsGetResponse))
         {
             Debug.LogError("No running events found.");
@@ -55,15 +54,15 @@ public class EventsScript : MonoBehaviour
             Debug.LogError("Event with ID is not running.");
             return;
         }
-
+        
+        _currentEventId = eventView.id;
+        
         if (string.IsNullOrEmpty(eventView.leaderboardId))
         {
-            Debug.Log("No leaderboard ID found. Registering stats-based score.");
             await RegisterStatsBasedScore(eventView.id);
         }
         else
         {
-            Debug.Log($"Leaderboard ID found: {eventView.leaderboardId}. Ensuring score on leaderboard.");
             await EnsureScoreOnLeaderboard(eventView.leaderboardId, eventView.id);
         }
 
@@ -76,7 +75,6 @@ public class EventsScript : MonoBehaviour
 
         if (!await LeaderboardExists(customLeaderboardId))
         {
-            Debug.Log($"Creating and populating new leaderboard with ID: {customLeaderboardId}");
             await CreateAndPopulateLeaderboard(customLeaderboardId);
         }
 
@@ -86,10 +84,7 @@ public class EventsScript : MonoBehaviour
 
     private async Task RegisterStatsBasedScore(string eventId)
     {
-        Debug.Log($"Registering stats-based score for event ID: {eventId}");
         var points = await GetVictoryPoints(); // Retrieve the player's EVENT_POINTS
-        Debug.Log($"Retrieved Victory Points: {points}");
-
         var leaderboardStats = new Dictionary<string, object>
         {
             { "event_points", points },
@@ -97,19 +92,15 @@ public class EventsScript : MonoBehaviour
         };
 
         await _service.SetEventScore(eventId, points, leaderboardStats); // Submit score with stats
-        Debug.Log($"Score registered with stats: {points}, Stats: {leaderboardStats}");
     }
 
     private async Task<int> GetVictoryPoints()
     {
-        Debug.Log("Fetching Victory Points...");
         var stats = await _beamContext.Api.StatsService.GetStats("client", "public", "player", _beamContext.PlayerId);
         if (stats.TryGetValue("EVENT_POINTS", out var points))
         {
-            Debug.Log($"Victory Points found: {points}");
             return int.Parse(points);
         }
-        Debug.LogWarning("No Victory Points found, returning 0.");
         return GenerateRandomScore();
     }
 
@@ -117,9 +108,7 @@ public class EventsScript : MonoBehaviour
     {
         try
         {
-            Debug.Log($"Checking if leaderboard exists: {leaderboardId}");
             await _beamContext.Api.LeaderboardService.GetBoard(leaderboardId, 1, 1);
-            Debug.Log("Leaderboard exists.");
             return true;
         }
         catch (PlatformRequesterException)
@@ -131,12 +120,10 @@ public class EventsScript : MonoBehaviour
 
     private async Task EnsureScoreOnLeaderboard(string leaderboardId, string eventId)
     {
-        Debug.Log($"Ensuring score on leaderboard: {leaderboardId}");
         var rankings = (await _beamContext.Api.LeaderboardService.GetBoard(leaderboardId, 1, 1000)).rankings;
 
         if (!rankings.Exists(rankEntry => rankEntry.gt == _beamContext.PlayerId))
         {
-            Debug.Log("No score found for player on the leaderboard. Registering new score.");
             await RegisterStatsBasedScore(eventId);
         }
         else
@@ -147,18 +134,15 @@ public class EventsScript : MonoBehaviour
 
     private async Task EnsurePlayerScoreOnCustomLeaderboard(string leaderboardId)
     {
-        Debug.Log($"Ensuring player score on custom leaderboard: {leaderboardId}");
         var view = await _beamContext.Api.LeaderboardService.GetBoard(leaderboardId, 1, 1000);
         var rankings = view.rankings;
 
-        bool hasScore = rankings.Exists(rankEntry => rankEntry.gt == _beamContext.PlayerId);
-        bool hasZeroScore = rankings.Exists(rankEntry => rankEntry.gt == _beamContext.PlayerId && rankEntry.score == 0);
-        Debug.Log($"Has Score: {hasScore}, Has Zero Score: {hasZeroScore}");
+        var hasScore = rankings.Exists(rankEntry => rankEntry.gt == _beamContext.PlayerId);
+        var hasZeroScore = rankings.Exists(rankEntry => rankEntry.gt == _beamContext.PlayerId && rankEntry.score == 0);
 
         if (!hasScore || hasZeroScore)
         {
             var randomPoints = GenerateRandomScore();
-            Debug.Log($"Registering player score on custom leaderboard: {randomPoints}");
             await _service.SetStats("EVENT_POINTS", randomPoints.ToString());
             await _service.SetLeaderboardScore(leaderboardId, randomPoints);
         }
@@ -172,7 +156,6 @@ public class EventsScript : MonoBehaviour
     {
         try
         {
-            Debug.Log($"Displaying leaderboard: {leaderboardId}");
             var rankings = (await _beamContext.Api.LeaderboardService.GetBoard(leaderboardId, 1, 1000)).rankings;
             ClearScrollViewContent();
 
@@ -180,7 +163,6 @@ public class EventsScript : MonoBehaviour
             {
                 var username = await GetPlayerUsername(rankEntry.gt);
                 CreateRankingItem(username, rankEntry.score.ToString());
-                Debug.Log($"Ranking item created for {username} with score {rankEntry.score}");
             }
         }
         catch (Exception e)
@@ -193,10 +175,8 @@ public class EventsScript : MonoBehaviour
     {
         try
         {
-            Debug.Log($"Fetching username for gamerTag: {gamerTag}");
             var response = await _userService.GetPlayerAvatarName(gamerTag);
-            string username = !string.IsNullOrEmpty(response.data) ? response.data : gamerTag.ToString();
-            Debug.Log($"Username fetched: {username}");
+            var username = !string.IsNullOrEmpty(response.data) ? response.data : gamerTag.ToString();
             return username;
         }
         catch (Exception e)
@@ -208,32 +188,27 @@ public class EventsScript : MonoBehaviour
 
     private void CreateRankingItem(string username, string score)
     {
-        Debug.Log($"Creating ranking item for {username} with score {score}");
         var rankingItem = Instantiate(rankingItemPrefab, scrollViewContent);
         var texts = rankingItem.GetComponentsInChildren<TextMeshProUGUI>();
 
         if (texts.Length < 2)
         {
-            Debug.LogError("RankingItemPrefab must have at least two TextMeshProUGUI components for GamerTag and Score.");
             return;
         }
 
         foreach (var text in texts)
         {
-            if (text.name == "GamerTag")
+            text.text = text.name switch
             {
-                text.text = username;
-            }
-            else if (text.name == "Score")
-            {
-                text.text = score;
-            }
+                "GamerTag" => username,
+                "Score" => score,
+                _ => text.text
+            };
         }
     }
 
     private void ClearScrollViewContent()
     {
-        Debug.Log("Clearing scroll view content...");
         foreach (Transform child in scrollViewContent)
         {
             Destroy(child.gameObject);
@@ -241,26 +216,22 @@ public class EventsScript : MonoBehaviour
     }
 
     [ItemCanBeNull]
-    private Task<string> ConstructCustomLeaderboardId(string eventId)
+    private static Task<string> ConstructCustomLeaderboardId(string eventId)
     {
-        Debug.Log($"Constructing custom leaderboard ID for event ID: {eventId}");
         var groupId = PlayerPrefs.GetString("SelectedGroupId");
         return Task.FromResult(string.IsNullOrEmpty(groupId) ? null : $"event_{eventId}_group_{groupId}");
     }
 
     private async Task CreateAndPopulateLeaderboard(string leaderboardId)
     {
-        Debug.Log($"Creating and populating leaderboard: {leaderboardId}");
         await _service.SetGroupLeaderboard(leaderboardId);
         var points = await GetVictoryPoints();
-        Debug.Log($"Populating leaderboard with initial score: {points}");
         await _service.SetStats("EVENT_POINTS", points.ToString());
         await _service.SetLeaderboardScore(leaderboardId, points);
     }
 
     private static bool HasRunningEvents(EventsGetResponse eventsGetResponse)
     {
-        Debug.Log("Checking if there are running events...");
         return eventsGetResponse?.running != null && eventsGetResponse.running.Count > 0;
     }
 
@@ -268,12 +239,10 @@ public class EventsScript : MonoBehaviour
     {
         try
         {
-            Debug.Log($"Displaying group name for group ID: {groupId}");
             var group = await _groupManager.GetGroup(groupId);
             if (group != null)
             {
                 groupNameText.text = group.name;
-                Debug.Log($"Group name displayed: {group.name}");
             }
             else
             {
@@ -284,6 +253,23 @@ public class EventsScript : MonoBehaviour
         {
             Debug.LogError($"Error fetching group details: {e.Message}");
         }
+    }
+    
+    private async Task ClaimRewards(string eventId)
+    {
+        try
+        {
+            await _beamContext.Api.EventsService.Claim(eventId);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error claiming reward: {e.Message}");
+        }
+    }
+
+    public async void ClaimButton()
+    {
+        await ClaimRewards(_currentEventId);
     }
     
     private int GenerateRandomScore()
