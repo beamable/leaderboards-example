@@ -8,6 +8,7 @@
 <assembly fullname="Beamable.Endel.NativeWebsocket" preserve="all"/>
 <assembly fullname="Beamable.Extensions" preserve="all"/>
 <assembly fullname="Beamable.JsonSerializable" preserve="all"/>
+<assembly fullname="Beamable.Microservice.BackendGroupService" preserve="all"/>
 <assembly fullname="Beamable.Microservice.BackendService" preserve="all"/>
 <assembly fullname="Beamable.Microservice.UserService" preserve="all"/>
 <assembly fullname="Beamable.Platform" preserve="all"/>

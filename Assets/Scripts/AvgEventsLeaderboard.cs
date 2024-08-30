@@ -50,6 +50,7 @@ public class AvgEventsLeaderboard : MonoBehaviour
         }
 
         var leaderboardId = $"event_{eventView.id}_groups";
+        Debug.Log($"Current Leaderboard ID: {leaderboardId}");
         await DisplayGroupLeaderboard(leaderboardId);
     }
 
@@ -75,8 +76,11 @@ public class AvgEventsLeaderboard : MonoBehaviour
                 
                 if (!bannedGroups.Contains(rankEntry.gt))
                 {
+                    Debug.Log($"Group name {rankEntry.gt}");
                     var groupName = await GetGroupName(rankEntry.gt);
-                    CreateRankingItem(groupName, rankEntry.score.ToString(), rankEntry.gt, leaderboardId);
+                    var groupMembersCount = await GetGroupMembersCount(rankEntry.gt);
+                    var averageScore = groupMembersCount > 0 ? rankEntry.score / groupMembersCount : 0;
+                    CreateRankingItem(groupName, averageScore.ToString(), rankEntry.gt, leaderboardId);
                 }
             }
         }
@@ -95,6 +99,7 @@ public class AvgEventsLeaderboard : MonoBehaviour
             if (group != null)
             {
                 Debug.Log(group.name);
+                Debug.Log(group.members.Count);
                 return group.name;
             }
             
@@ -154,6 +159,20 @@ public class AvgEventsLeaderboard : MonoBehaviour
         foreach (Transform child in scrollViewContent)
         {
             Destroy(child.gameObject);
+        }
+    }
+    
+    private async Task<int> GetGroupMembersCount(long groupId)
+    {
+        try
+        {
+            var group = await _beamContext.Api.GroupsService.GetGroup(groupId);
+            return group != null ? group.members.Count : 0;
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error fetching group members count: {e.Message}");
+            return 0;
         }
     }
 }
