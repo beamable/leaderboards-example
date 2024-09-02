@@ -21,5 +21,9 @@ Beamable Leaderboards example with minimalist design.
 *Rewarding System:*
    - Group leaderboards will have a rewarding system.
 
+*Score Updates:*
+  - Scores need to be updatable by every member of the group, as well as through C# MS.
+  - Scores can increase or decrease based on group joining/leaving
+
 *Banning/Unbanning of Groups:*
   - the ability to ban or unban groups.
