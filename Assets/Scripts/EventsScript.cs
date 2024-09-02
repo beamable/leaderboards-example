@@ -88,7 +88,6 @@ public class EventsScript : MonoBehaviour
         var leaderboardStats = new Dictionary<string, object>
         {
             { "event_points", points },
-            { "submission_timestamp", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }
         };
 
         await _service.SetEventScore(eventId, points, leaderboardStats);
