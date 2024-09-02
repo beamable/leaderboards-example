@@ -24,25 +24,46 @@ public class TournamentScript : MonoBehaviour
 
     private async void Start()
     {
+        Debug.Log("Starting TournamentScript...");
+
         if (!await InitializeContext()) return;
+
+        Debug.Log("BeamContext initialized successfully.");
 
         // Load group ID and display group name
         if (long.TryParse(PlayerPrefs.GetString("SelectedGroupId", string.Empty), out var groupId))
         {
+            Debug.Log($"Group ID found: {groupId}");
             await DisplayGroupName(groupId);
+        }
+        else
+        {
+            Debug.LogWarning("No Group ID found in PlayerPrefs.");
         }
 
         // Get and join the active tournament
         var activeTournament = await GetActiveOrUpcomingTournament();
-        if (activeTournament == null) return;
+        if (activeTournament == null)
+        {
+            Debug.LogError("No active or upcoming tournament found.");
+            return;
+        }
 
         _tournamentId = activeTournament.tournamentId;
+        Debug.Log($"Active Tournament ID: {_tournamentId}");
         await JoinTournament(_tournamentId);
 
         // Construct leaderboard ID and ensure score
         var leaderboardId = await ConstructGroupLeaderboardId(_tournamentId);
-        if (string.IsNullOrEmpty(leaderboardId)) return;
+        if (string.IsNullOrEmpty(leaderboardId))
+        {
+            Debug.LogError("Failed to construct leaderboard ID.");
+            return;
+        }
 
+        Debug.Log($"Constructed Leaderboard ID: {leaderboardId}");
+
+        // Ensure leaderboard and score are properly set
         await EnsureTournamentScore(leaderboardId);
         await DisplayLeaderboard(leaderboardId);
     }
@@ -66,38 +87,55 @@ public class TournamentScript : MonoBehaviour
 
     private async Task EnsureTournamentScore(string leaderboardId)
     {
-        if (await LeaderboardExists(leaderboardId))
+        int points = await GetTournamentPoints();
+
+        if (!await LeaderboardExists(leaderboardId))
         {
-            await EnsurePlayerScoreOnLeaderboard(leaderboardId);
+            Debug.Log("Leaderboard does not exist. Setting score in the tournament first.");
+            await _beamContext.Api.Tournaments.SetScore(_tournamentId, _beamContext.PlayerId, points);
+
+            if (!await LeaderboardExists(leaderboardId))
+            {
+                Debug.Log("Leaderboard still does not exist after setting score. Creating it now.");
+                await CreateAndPopulateLeaderboard(leaderboardId, points);
+            }
         }
         else
         {
-            await UpdateTournamentStats();
-            var points = await GetTournamentPoints();
-            await CreateAndPopulateLeaderboard(leaderboardId, points);
+            Debug.Log("Leaderboard exists, ensuring player score...");
+            await EnsurePlayerScoreOnLeaderboard(leaderboardId);
         }
-    }
-
-    private async Task UpdateTournamentStats()
-    {
-        var points = await GetTournamentPoints();
-        await _service.SetStats("TOURNAMENTS_POINTS", points.ToString());
     }
 
     private async Task<int> GetTournamentPoints()
     {
+        Debug.Log("Fetching tournament points...");
         var stats = await _beamContext.Api.StatsService.GetStats("client", "public", "player", _beamContext.PlayerId);
-        return stats.TryGetValue("TOURNAMENT_POINTS", out var points) ? int.Parse(points) : GenerateRandomScore();
+        var points = stats.TryGetValue("TOURNAMENT_POINTS", out var value) ? int.Parse(value) : GenerateRandomScore();
+
+        if (points == 0)
+        {
+            Debug.Log("No points found in stats, generating random score.");
+            points = GenerateRandomScore();
+            await _service.SetStats("TOURNAMENT_POINTS", points.ToString());
+        }
+
+        Debug.Log($"Tournament points: {points}");
+        return points;
     }
 
     private async Task<List<TournamentInfo>> GetTournaments()
     {
+        Debug.Log("Fetching all tournaments...");
         var response = await _beamContext.Api.TournamentsService.GetAllTournaments();
-        return response?.tournaments ?? new List<TournamentInfo>();
+        var tournaments = response?.tournaments ?? new List<TournamentInfo>();
+        Debug.Log($"Total tournaments fetched: {tournaments.Count}");
+        return tournaments;
     }
 
     private async Task JoinTournament(string tournamentId)
     {
+        Debug.Log($"Joining tournament with ID: {tournamentId}");
         await _beamContext.Api.TournamentsService.JoinTournament(tournamentId);
     }
 
@@ -110,6 +148,7 @@ public class TournamentScript : MonoBehaviour
         }
         catch
         {
+            Debug.LogWarning($"Leaderboard with ID {leaderboardId} does not exist.");
             return false;
         }
     }
@@ -119,21 +158,30 @@ public class TournamentScript : MonoBehaviour
         var view = await _beamContext.Api.LeaderboardService.GetBoard(leaderboardId, 1, 1000);
         if (view.rankings.All(rankEntry => rankEntry.gt != _beamContext.PlayerId))
         {
-            double randomScore = GenerateRandomScore();
-            await _service.SetLeaderboardScore(leaderboardId, randomScore);
+            Debug.Log("Player does not have a score on the leaderboard, submitting a new score...");
+            int points = await GetTournamentPoints();
+            await _service.SetLeaderboardScore(leaderboardId, points);
+            await _beamContext.Api.Tournaments.SetScore(leaderboardId, _beamContext.PlayerId, points);
+        }
+        else
+        {
+            Debug.Log("Player already has a score on the leaderboard.");
         }
     }
 
     private async Task CreateAndPopulateLeaderboard(string leaderboardId, double score)
     {
+        Debug.Log($"Creating and populating leaderboard with ID: {leaderboardId} and score: {score}");
         await _service.SetGroupLeaderboard(leaderboardId);
         await _service.SetLeaderboardScore(leaderboardId, score);
+        await _beamContext.Api.Tournaments.SetScore(leaderboardId, _beamContext.PlayerId, score);
     }
 
     private async Task DisplayLeaderboard(string leaderboardId)
     {
         try
         {
+            Debug.Log($"Displaying leaderboard with ID: {leaderboardId}");
             var view = await _beamContext.Api.LeaderboardService.GetBoard(leaderboardId, 1, 1000);
             ClearScrollViewContent();
 
@@ -151,6 +199,7 @@ public class TournamentScript : MonoBehaviour
 
     private void ClearScrollViewContent()
     {
+        Debug.Log("Clearing leaderboard content...");
         foreach (Transform child in scrollViewContent)
         {
             Destroy(child.gameObject);
@@ -178,6 +227,7 @@ public class TournamentScript : MonoBehaviour
 
     private void CreateRankingItem(string username, string score)
     {
+        Debug.Log($"Creating ranking item for {username} with score {score}");
         var rankingItem = Instantiate(rankingItemPrefab, scrollViewContent);
         var texts = rankingItem.GetComponentsInChildren<TextMeshProUGUI>();
 
@@ -198,6 +248,7 @@ public class TournamentScript : MonoBehaviour
     {
         try
         {
+            Debug.Log($"Fetching group name for group ID: {groupId}");
             var group = await _groupManager.GetGroup(groupId);
             if (group != null)
             {
@@ -215,12 +266,16 @@ public class TournamentScript : MonoBehaviour
         var tournaments = await GetTournaments();
         var validTournaments = tournaments.Where(t => DateTime.TryParse(t.endTimeUtc, out var endTime) && endTime > DateTime.UtcNow).ToList();
 
+        Debug.Log($"Active or upcoming tournaments count: {validTournaments.Count}");
+
         return validTournaments.OrderByDescending(t => DateTime.Parse(t.endTimeUtc)).FirstOrDefault();
     }
+
     private async Task ClaimAllRewards(string tournamentId)
     {
         try
         {
+            Debug.Log($"Claiming all rewards for tournament ID: {tournamentId}");
             var notClaimedRewards = await _beamContext.Api.Tournaments.GetUnclaimedRewards(tournamentId);
             Debug.Log($"Not claimed rewards count: {notClaimedRewards.rewardCurrencies.Count}");
             if (notClaimedRewards.rewardCurrencies.Count > 0)
@@ -249,9 +304,16 @@ public class TournamentScript : MonoBehaviour
             Debug.LogError($"Unexpected error claiming reward: {e.Message}");
         }
     }
+
     public async void OnClaimRewardsButtonPressed()
     {
-        if (string.IsNullOrEmpty(_tournamentId)) return;
+        if (string.IsNullOrEmpty(_tournamentId))
+        {
+            Debug.LogWarning("No tournament ID available, cannot claim rewards.");
+            return;
+        }
+
+        Debug.Log("Claim rewards button pressed.");
         await ClaimAllRewards(_tournamentId);
     }
 }

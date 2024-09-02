@@ -199,5 +199,19 @@ namespace Managers
             }
             return false;
         }
+
+        public async Task<int> GetGroupMembersCount(long groupId)
+        {
+            try
+            {
+                var group = await _beamContext.Api.GroupsService.GetGroup(groupId);
+                return group.members.Count;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Could not get group count, error: {e.Message}");
+                throw;
+            }
+        }
     }
 }

@@ -790,8 +790,8 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 605028183}
   m_HandleRect: {fileID: 605028182}
   m_Direction: 2
-  m_Value: 0.9999959
-  m_Size: 0.92609996
+  m_Value: 0.99999726
+  m_Size: 0.9261001
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -1513,7 +1513,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: See All Tournaments
+  m_text: See All Groups
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}

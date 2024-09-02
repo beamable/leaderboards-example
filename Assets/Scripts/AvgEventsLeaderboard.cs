@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Beamable;
 using Beamable.Common.Api.Events;
@@ -71,17 +72,13 @@ public class AvgEventsLeaderboard : MonoBehaviour
             var rankings = view.rankings;
             ClearScrollViewContent();
 
-            foreach (var rankEntry in rankings)
+            foreach (var rankEntry in rankings.Where(rankEntry => !bannedGroups.Contains(rankEntry.gt)))
             {
-                
-                if (!bannedGroups.Contains(rankEntry.gt))
-                {
-                    Debug.Log($"Group name {rankEntry.gt}");
-                    var groupName = await GetGroupName(rankEntry.gt);
-                    var groupMembersCount = await GetGroupMembersCount(rankEntry.gt);
-                    var averageScore = groupMembersCount > 0 ? rankEntry.score / groupMembersCount : 0;
-                    CreateRankingItem(groupName, averageScore.ToString(), rankEntry.gt, leaderboardId);
-                }
+                Debug.Log($"Group name {rankEntry.gt}");
+                var groupName = await GetGroupName(rankEntry.gt);
+                var groupMembersCount = await GetGroupMembersCount(rankEntry.gt);
+                var averageScore = groupMembersCount > 0 ? rankEntry.score / groupMembersCount : 0;
+                CreateRankingItem(groupName, averageScore.ToString(), rankEntry.gt, leaderboardId);
             }
         }
         catch (Exception e)
@@ -95,15 +92,12 @@ public class AvgEventsLeaderboard : MonoBehaviour
     {
         try
         {
-            var group = await _beamContext.Api.GroupsService.GetGroup(groupId);
-            if (group != null)
-            {
-                Debug.Log(group.name);
-                Debug.Log(group.members.Count);
-                return group.name;
-            }
-            
-            return groupId.ToString();
+            var group = await _groupManager.GetGroup(groupId);
+            if (group == null) return groupId.ToString();
+            Debug.Log(group.name);
+            Debug.Log(group.members.Count);
+            return group.name;
+
         }
         catch (Exception e)
         {
@@ -166,8 +160,8 @@ public class AvgEventsLeaderboard : MonoBehaviour
     {
         try
         {
-            var group = await _beamContext.Api.GroupsService.GetGroup(groupId);
-            return group != null ? group.members.Count : 0;
+            var groupCount = await _groupManager.GetGroupMembersCount(groupId);
+            return groupCount;
         }
         catch (Exception e)
         {
