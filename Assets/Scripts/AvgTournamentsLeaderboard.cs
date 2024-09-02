@@ -39,7 +39,7 @@ public class AvgTournamentLeaderboard : MonoBehaviour
         }
         
         // Construct the group average leaderboard ID
-        var groupAvgLeaderboardId = ConstructGroupAvgLeaderboardId(activeTournament.tournamentId);
+        var groupAvgLeaderboardId = await DiscoverLeaderboardId(activeTournament.tournamentId);
 
         // Log the leaderboard ID
         Debug.Log($"Constructed Group Average Leaderboard ID: {groupAvgLeaderboardId}");
@@ -193,6 +193,37 @@ public class AvgTournamentLeaderboard : MonoBehaviour
         {
             Debug.LogError($"Error fetching group members count: {e.Message}");
             return 0;
+        }
+    }
+    
+    private async Task<string> DiscoverLeaderboardId(string tournamentId)
+    {
+        string baseId = $"{tournamentId}.0.";
+        int suffix = 2;
+
+        while (suffix >= 0) 
+        {
+            string leaderboardId = $"{baseId}{suffix}.group#0";
+            if (await LeaderboardExists(leaderboardId))
+            {
+                return leaderboardId;
+            }
+            suffix--;
+        }
+
+        return null;
+    }
+    
+    private async Task<bool> LeaderboardExists(string leaderboardId)
+    {
+        try
+        {
+            await _beamContext.Api.LeaderboardService.GetBoard(leaderboardId, 1, 1);
+            return true;
+        }
+        catch (PlatformRequesterException)
+        {
+            return false;
         }
     }
 }

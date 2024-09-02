@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Beamable;
 using Beamable.Api;
 using Beamable.Common.Api.Events;
 using Beamable.Server.Clients;
-using JetBrains.Annotations;
 using Managers;
 using TMPro;
 using UnityEngine;
@@ -16,18 +16,19 @@ public class EventsScript : MonoBehaviour
     private BackendServiceClient _service;
     private UserServiceClient _userService;
     private PlayerGroupManager _groupManager;
+    private string _groupIdString;
     private string _currentEventId;
 
     [SerializeField] private TMP_Text groupNameText;
+    [SerializeField] private TMP_Text groupScoreText;
     [SerializeField] private GameObject rankingItemPrefab;
     [SerializeField] private Transform scrollViewContent;
 
     private async void Start()
     {
-        if (!await InitializeContext()) return;
+        await InitializeContext();
 
-        var groupIdString = PlayerPrefs.GetString("SelectedGroupId", string.Empty);
-        if (long.TryParse(groupIdString, out var groupId))
+        if (TryGetGroupId(out var groupId))
         {
             await DisplayGroupName(groupId);
         }
@@ -35,22 +36,21 @@ public class EventsScript : MonoBehaviour
         _beamContext.Api.EventsService.Subscribe(OnEventUpdate);
     }
 
-    private async Task<bool> InitializeContext()
+    private async Task InitializeContext()
     {
-        try
-        {
-            _beamContext = await BeamContext.Default.Instance;
-            _service = new BackendServiceClient();
-            _userService = new UserServiceClient();
-            _groupManager = new PlayerGroupManager(_beamContext);
-            return true;
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"Error initializing context: {e.Message}");
-            return false;
-        }
+        _beamContext = await BeamContext.Default.Instance;
+        _service = new BackendServiceClient();
+        _userService = new UserServiceClient();
+        _groupManager = new PlayerGroupManager(_beamContext);
+        _groupIdString = PlayerPrefs.GetString("SelectedGroupId", string.Empty);
     }
+
+    private bool TryGetGroupId(out long groupId)
+    {
+        groupId = 0;
+        return !string.IsNullOrEmpty(_groupIdString) && long.TryParse(_groupIdString, out groupId);
+    }
+
 
     private async void OnEventUpdate(EventsGetResponse eventsGetResponse)
     {
@@ -70,7 +70,7 @@ public class EventsScript : MonoBehaviour
             await EnsureScoreOnLeaderboard(eventView.leaderboardId, eventView.id);
         }
 
-        var customLeaderboardId = await ConstructCustomLeaderboardId(eventView.id);
+        var customLeaderboardId = ConstructCustomLeaderboardId(eventView.id);
         if (string.IsNullOrEmpty(customLeaderboardId)) return;
 
         if (!await LeaderboardExists(customLeaderboardId))
@@ -80,6 +80,7 @@ public class EventsScript : MonoBehaviour
 
         await EnsurePlayerScoreOnCustomLeaderboard(customLeaderboardId);
         await DisplayLeaderboard(customLeaderboardId);
+        await DisplayGroupScore(eventView.id);
     }
 
     private async Task RegisterStatsBasedScore(string eventId)
@@ -154,11 +155,43 @@ public class EventsScript : MonoBehaviour
         }
     }
 
+    private async Task DisplayGroupScore(string eventId)
+    {
+        Debug.Log("Displaying group score...");
+
+        // Construct the leaderboard ID for the group scores
+        var groupLeaderboardId = $"event_{eventId}_groups";
+
+        var view = await _beamContext.Api.LeaderboardService.GetBoard(groupLeaderboardId, 1, 1000);
+        var groupRanking = view.rankings.FirstOrDefault(r => r.gt.ToString() == _groupIdString);
+        int groupScore;
+
+        if (groupRanking != null)
+        {
+            // If the group is found in the leaderboard
+            groupScore = (int)groupRanking.score;
+            Debug.Log($"Group found in leaderboard with score: {groupScore}");
+        }
+        else
+        {
+            // If the group is not found, sum up all the scores
+            var customLeaderboardTitle = ConstructCustomLeaderboardId(eventId);
+            var customLeaderboard = await _beamContext.Api.LeaderboardService.GetBoard(customLeaderboardTitle, 1, 1000);
+            groupScore = customLeaderboard.rankings.Sum(r => (int)r.score);
+            Debug.Log($"Group not found, summing all scores: {groupScore}");
+        }
+
+        // Update the text on the UI
+        groupScoreText.text = $"Event Group Score: {groupScore}";
+        Debug.Log($"Group score displayed: {groupScore}");
+    }
+
     private async Task<string> GetPlayerUsername(long gamerTag)
     {
         try
         {
             var response = await _userService.GetPlayerAvatarName(gamerTag);
+            return !string.IsNullOrEmpty(response.data) ? response.data : gamerTag.ToString();
             return !string.IsNullOrEmpty(response.data) ? response.data : gamerTag.ToString();
         }
         catch
@@ -172,17 +205,10 @@ public class EventsScript : MonoBehaviour
         var rankingItem = Instantiate(rankingItemPrefab, scrollViewContent);
         var texts = rankingItem.GetComponentsInChildren<TextMeshProUGUI>();
 
-        if (texts.Length >= 2)
+        foreach (var text in texts)
         {
-            foreach (var text in texts)
-            {
-                text.text = text.name switch
-                {
-                    "GamerTag" => username,
-                    "Score" => score,
-                    _ => text.text
-                };
-            }
+            if (text.name == "GamerTag") text.text = username;
+            else if (text.name == "Score") text.text = score;
         }
     }
 
@@ -194,17 +220,17 @@ public class EventsScript : MonoBehaviour
         }
     }
 
-    [ItemCanBeNull]
-    private static Task<string> ConstructCustomLeaderboardId(string eventId)
+    private string ConstructCustomLeaderboardId(string eventId)
     {
         var groupId = PlayerPrefs.GetString("SelectedGroupId");
-        return Task.FromResult(string.IsNullOrEmpty(groupId) ? null : $"event_{eventId}_group_{groupId}");
+        return string.IsNullOrEmpty(groupId) ? null : $"event_{eventId}_group_{groupId}";
     }
 
     private async Task CreateAndPopulateLeaderboard(string leaderboardId)
     {
         await _service.SetGroupLeaderboard(leaderboardId);
         var points = await GetVictoryPoints();
+        await _service.SetStats("EVENT_POINTS", points.ToString());
         await _service.SetLeaderboardScore(leaderboardId, points);
     }
 
@@ -218,10 +244,7 @@ public class EventsScript : MonoBehaviour
         try
         {
             var group = await _groupManager.GetGroup(groupId);
-            if (group != null)
-            {
-                groupNameText.text = group.name;
-            }
+            groupNameText.text = group?.name;
         }
         catch (Exception e)
         {

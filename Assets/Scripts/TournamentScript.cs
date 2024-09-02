@@ -17,10 +17,12 @@ public class TournamentScript : MonoBehaviour
     private UserServiceClient _userService;
     private PlayerGroupManager _groupManager;
     private string _tournamentId;
+    private string _groupIdString;
 
     [SerializeField] private GameObject rankingItemPrefab;
     [SerializeField] private Transform scrollViewContent;
     [SerializeField] private TMP_Text groupNameText;
+    [SerializeField] private TMP_Text groupScoreText;
 
     private async void Start()
     {
@@ -31,7 +33,7 @@ public class TournamentScript : MonoBehaviour
         Debug.Log("BeamContext initialized successfully.");
 
         // Load group ID and display group name
-        if (long.TryParse(PlayerPrefs.GetString("SelectedGroupId", string.Empty), out var groupId))
+        if (TryGetGroupId(out var groupId))
         {
             Debug.Log($"Group ID found: {groupId}");
             await DisplayGroupName(groupId);
@@ -54,7 +56,7 @@ public class TournamentScript : MonoBehaviour
         await JoinTournament(_tournamentId);
 
         // Construct leaderboard ID and ensure score
-        var leaderboardId = await ConstructGroupLeaderboardId(_tournamentId);
+        var leaderboardId = ConstructGroupLeaderboardId(_tournamentId);
         if (string.IsNullOrEmpty(leaderboardId))
         {
             Debug.LogError("Failed to construct leaderboard ID.");
@@ -66,6 +68,7 @@ public class TournamentScript : MonoBehaviour
         // Ensure leaderboard and score are properly set
         await EnsureTournamentScore(leaderboardId);
         await DisplayLeaderboard(leaderboardId);
+        await DisplayGroupScore(activeTournament.tournamentId);
     }
 
     private async Task<bool> InitializeContext()
@@ -76,6 +79,7 @@ public class TournamentScript : MonoBehaviour
             _service = new BackendServiceClient();
             _userService = new UserServiceClient();
             _groupManager = new PlayerGroupManager(_beamContext);
+            _groupIdString = PlayerPrefs.GetString("SelectedGroupId", string.Empty);
             return true;
         }
         catch (Exception e)
@@ -85,6 +89,12 @@ public class TournamentScript : MonoBehaviour
         }
     }
 
+    private bool TryGetGroupId(out long groupId)
+    {
+        groupId = 0;
+        return !string.IsNullOrEmpty(_groupIdString) && long.TryParse(_groupIdString, out groupId);
+    }
+    
     private async Task EnsureTournamentScore(string leaderboardId)
     {
         int points = await GetTournamentPoints();
@@ -161,7 +171,7 @@ public class TournamentScript : MonoBehaviour
             Debug.Log("Player does not have a score on the leaderboard, submitting a new score...");
             int points = await GetTournamentPoints();
             await _service.SetLeaderboardScore(leaderboardId, points);
-            await _beamContext.Api.Tournaments.SetScore(leaderboardId, _beamContext.PlayerId, points);
+            await _beamContext.Api.Tournaments.SetScore(_tournamentId, _beamContext.PlayerId, points);
         }
         else
         {
@@ -174,7 +184,7 @@ public class TournamentScript : MonoBehaviour
         Debug.Log($"Creating and populating leaderboard with ID: {leaderboardId} and score: {score}");
         await _service.SetGroupLeaderboard(leaderboardId);
         await _service.SetLeaderboardScore(leaderboardId, score);
-        await _beamContext.Api.Tournaments.SetScore(leaderboardId, _beamContext.PlayerId, score);
+        await _beamContext.Api.Tournaments.SetScore(_tournamentId, _beamContext.PlayerId, score);
     }
 
     private async Task DisplayLeaderboard(string leaderboardId)
@@ -206,9 +216,9 @@ public class TournamentScript : MonoBehaviour
         }
     }
 
-    private static async Task<string> ConstructGroupLeaderboardId(string tournamentId)
+    private string ConstructGroupLeaderboardId(string tournamentId)
     {
-        var groupId = PlayerPrefs.GetString("SelectedGroupId");
+        var groupId = _groupIdString;
         return string.IsNullOrEmpty(groupId) ? null : $"{tournamentId}.0.0.group.{groupId}";
     }
 
@@ -316,4 +326,53 @@ public class TournamentScript : MonoBehaviour
         Debug.Log("Claim rewards button pressed.");
         await ClaimAllRewards(_tournamentId);
     }
+    
+    private async Task DisplayGroupScore(string tournamentId)
+    {
+        Debug.Log("Displaying group score...");
+
+        // Construct the leaderboard ID for the group scores
+        var groupLeaderboardId = await DiscoverLeaderboardId(tournamentId);
+
+        var view = await _beamContext.Api.LeaderboardService.GetBoard(groupLeaderboardId, 1, 1000);
+        var groupRanking = view.rankings.FirstOrDefault(r => r.gt.ToString() == _groupIdString);
+        int groupScore;
+
+        if (groupRanking != null)
+        {
+            // If the group is found in the leaderboard
+            groupScore = (int)groupRanking.score;
+            Debug.Log($"Group found in leaderboard with score: {groupScore}");
+        }
+        else
+        {
+            // If the group is not found, sum up all the scores
+            var customLeaderboardTitle = ConstructGroupLeaderboardId(tournamentId);
+            var customLeaderboard = await _beamContext.Api.LeaderboardService.GetBoard(customLeaderboardTitle, 1, 1000);
+            groupScore = customLeaderboard.rankings.Sum(r => (int)r.score);
+            Debug.Log($"Group not found, summing all scores: {groupScore}");
+        }
+
+        // Update the text on the UI
+        groupScoreText.text = $"Event Group Score: {groupScore}";
+        Debug.Log($"Group score displayed: {groupScore}");
+    }
+    private async Task<string> DiscoverLeaderboardId(string tournamentId)
+    {
+        string baseId = $"{tournamentId}.0.";
+        int suffix = 2;
+
+        while (suffix >= 0) 
+        {
+            string leaderboardId = $"{baseId}{suffix}.group#0";
+            if (await LeaderboardExists(leaderboardId))
+            {
+                return leaderboardId;
+            }
+            suffix--;
+        }
+
+        return null;
+    }
+    
 }
