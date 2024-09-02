@@ -21,6 +21,7 @@ public class TournamentScript : MonoBehaviour
     [SerializeField] private GameObject rankingItemPrefab;
     [SerializeField] private Transform scrollViewContent;
     [SerializeField] private TMP_Text groupNameText;
+    [SerializeField] private TMP_Text groupScoreText;
 
     private async void Start()
     {
@@ -50,7 +51,7 @@ public class TournamentScript : MonoBehaviour
         await JoinTournament(activeTournament.tournamentId);
 
         // Construct the leaderboard ID
-        var leaderboardId = await ConstructGroupLeaderboardId(activeTournament.tournamentId);
+        var leaderboardId = ConstructGroupLeaderboardId(activeTournament.tournamentId);
         if (string.IsNullOrEmpty(leaderboardId))
         {
             Debug.LogError("Group ID is not set in PlayerPrefs.");
@@ -62,6 +63,7 @@ public class TournamentScript : MonoBehaviour
 
         // Display the leaderboard
         await DisplayLeaderboard(leaderboardId);
+        await DisplayGroupScore(activeTournament.tournamentId);
     }
 
     private async Task EnsureTournamentScore(string leaderboardId, string tournamentId)
@@ -201,10 +203,10 @@ public class TournamentScript : MonoBehaviour
         }
     }
 
-    private async Task<string> ConstructGroupLeaderboardId(string tournamentId)
+    private static string ConstructGroupLeaderboardId(string tournamentId)
     {
         var groupId = PlayerPrefs.GetString("SelectedGroupId");
-        return await Task.FromResult(string.IsNullOrEmpty(groupId) ? null : $"{tournamentId}.0.0.group.{groupId}");
+        return string.IsNullOrEmpty(groupId) ? null : $"{tournamentId}.0.0.group.{groupId}";
     }
 
     private async Task<string> GetPlayerUsername(long gamerTag)
@@ -302,5 +304,36 @@ public class TournamentScript : MonoBehaviour
         }
 
         return null;
+    }
+    
+    private async Task DisplayGroupScore(string tournamentId)
+    {
+        Debug.Log("Displaying group score...");
+
+        // Construct the leaderboard ID for the group scores
+        var groupLeaderboardId = $"event_{tournamentId}_groups";
+
+        var view = await _beamContext.Api.LeaderboardService.GetBoard(groupLeaderboardId, 1, 1000);
+        var groupRanking = view.rankings.FirstOrDefault(r => r.gt.ToString() == _groupIdString);
+        int groupScore;
+
+        if (groupRanking != null)
+        {
+            // If the group is found in the leaderboard
+            groupScore = (int)groupRanking.score;
+            Debug.Log($"Group found in leaderboard with score: {groupScore}");
+        }
+        else
+        {
+            // If the group is not found, sum up all the scores
+            var customLeaderboardTitle = ConstructGroupLeaderboardId(tournamentId);
+            var customLeaderboard = await _beamContext.Api.LeaderboardService.GetBoard(customLeaderboardTitle, 1, 1000);
+            groupScore = customLeaderboard.rankings.Sum(r => (int)r.score);
+            Debug.Log($"Group not found, summing all scores: {groupScore}");
+        }
+
+        // Update the text on the UI
+        groupScoreText.text = $"Event Group Score: {groupScore}";
+        Debug.Log($"Group score displayed: {groupScore}");
     }
 }
