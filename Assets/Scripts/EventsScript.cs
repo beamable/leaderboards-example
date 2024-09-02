@@ -17,6 +17,7 @@ public class EventsScript : MonoBehaviour
     private UserServiceClient _userService;
     private PlayerGroupManager _groupManager;
     private string _groupIdString;
+    private string _currentEventId;
 
     [SerializeField] private TMP_Text groupNameText;
     [SerializeField] private TMP_Text groupScoreText;
@@ -50,12 +51,15 @@ public class EventsScript : MonoBehaviour
         return !string.IsNullOrEmpty(_groupIdString) && long.TryParse(_groupIdString, out groupId);
     }
 
+
     private async void OnEventUpdate(EventsGetResponse eventsGetResponse)
     {
         if (!HasRunningEvents(eventsGetResponse)) return;
 
         var eventView = eventsGetResponse.running[0];
         if (eventView == null) return;
+
+        _currentEventId = eventView.id;
 
         if (string.IsNullOrEmpty(eventView.leaderboardId))
         {
@@ -85,8 +89,8 @@ public class EventsScript : MonoBehaviour
         var leaderboardStats = new Dictionary<string, object>
         {
             { "event_points", points },
-            { "submission_timestamp", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }
         };
+
         await _service.SetEventScore(eventId, points, leaderboardStats);
     }
 
@@ -123,8 +127,8 @@ public class EventsScript : MonoBehaviour
         var view = await _beamContext.Api.LeaderboardService.GetBoard(leaderboardId, 1, 1000);
         var rankings = view.rankings;
 
-        if (!rankings.Exists(rankEntry => rankEntry.gt == _beamContext.PlayerId) ||
-            rankings.Exists(rankEntry => rankEntry.gt == _beamContext.PlayerId && rankEntry.score == 0))
+        var playerEntry = rankings.Find(rankEntry => rankEntry.gt == _beamContext.PlayerId);
+        if (playerEntry == null || playerEntry.score == 0)
         {
             var randomPoints = GenerateRandomScore();
             await _service.SetStats("EVENT_POINTS", randomPoints.ToString());
@@ -188,10 +192,10 @@ public class EventsScript : MonoBehaviour
         {
             var response = await _userService.GetPlayerAvatarName(gamerTag);
             return !string.IsNullOrEmpty(response.data) ? response.data : gamerTag.ToString();
+            return !string.IsNullOrEmpty(response.data) ? response.data : gamerTag.ToString();
         }
-        catch (Exception e)
+        catch
         {
-            Debug.LogError($"Error fetching player username: {e.Message}");
             return gamerTag.ToString();
         }
     }
@@ -248,8 +252,38 @@ public class EventsScript : MonoBehaviour
         }
     }
 
-    private int GenerateRandomScore()
+    private async Task ClaimRewards(string eventId)
     {
-        return new System.Random().Next(0, 1000);
+        try
+        {
+            await _beamContext.Api.EventsService.Claim(eventId);
+            Debug.Log("Reward claimed successfully.");
+        }
+        catch (PlatformRequesterException ex)
+        {
+            if (ex.Error.error == "NoClaimsPending")
+            {
+                Debug.Log("No rewards pending for this event.");
+            }
+            else
+            {
+                Debug.LogError($"Error claiming reward: {ex.Message}");
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Unexpected error claiming reward: {e.Message}");
+        }
     }
+
+
+    public async void ClaimButton()
+    {
+        if (!string.IsNullOrEmpty(_currentEventId))
+        {
+            await ClaimRewards(_currentEventId);
+        }
+    }
+
+    private int GenerateRandomScore() => new System.Random().Next(0, 1000);
 }

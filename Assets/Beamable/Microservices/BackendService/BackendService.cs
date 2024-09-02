@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Beamable.Common.Api.Tournaments;
 using Beamable.Common.Models;
 using Beamable.Server;
 using Beamable.Server.Api.Leaderboards;
@@ -99,6 +100,37 @@ namespace Beamable.Microservices
             await Services.Stats.SetStats(access, resetStats);
             Debug.Log("success");
 
+        }
+
+        [ClientCallable]
+        public async Task JoinTournament(string tournamentId)
+        {
+            try
+            {
+                await Services.Tournament.JoinTournament(tournamentId);
+            Debug.Log("joined");
+            }
+            catch (Exception e)
+            {
+                System.Console.WriteLine(e);
+                throw;
+            }
+        }
+
+        [ClientCallable]
+        public async Task<TournamentRewardsResponse> ClaimAllRewards(string tournamentId)
+        {
+            try
+            {
+                var rewardsResponse = await Services.Tournament.ClaimAllRewards(tournamentId);
+                Debug.Log("All rewards claimed successfully.");
+                return rewardsResponse;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Error claiming rewards: {e.Message}");
+                throw;
+            }
         }
     }
 }
