@@ -15,6 +15,9 @@ EditorBuildSettings:
     path: Assets/Scenes/GroupDetails.unity
     guid: 7276ed5342d92524a95261e487265ec0
   - enabled: 1
+    path: Assets/Scenes/TotalPowerLeaderboard.unity
+    guid: 9a4906a45784a2344860e2d31d28e809
+  - enabled: 1
     path: Assets/Scenes/ViewGroups.unity
     guid: f557eea85afb73c4d821e4f4936e6596
   - enabled: 1
