@@ -192,7 +192,6 @@ public class EventsScript : MonoBehaviour
         {
             var response = await _userService.GetPlayerAvatarName(gamerTag);
             return !string.IsNullOrEmpty(response.data) ? response.data : gamerTag.ToString();
-            return !string.IsNullOrEmpty(response.data) ? response.data : gamerTag.ToString();
         }
         catch
         {

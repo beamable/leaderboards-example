@@ -33,6 +33,11 @@ public class NavigationManager : MonoBehaviour
         SceneManager.LoadScene("AvgTournamentsLeaderboard");
     }
     
+    public void LoadTotalPowerLeaderboardScene()
+    {
+        SceneManager.LoadScene("TotalPowerLeaderboard");
+    }
+    
     public void LoadBannedGroupsScene()
     {
         SceneManager.LoadScene("BannedGroups");
