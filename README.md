@@ -5,10 +5,12 @@ Beamable Leaderboards example with minimalist design.
   - Individual users' tournament scores are posted in the group.
   - The overall group score is calculated as the sum of all users' scores in that specific group.
   - Each cycle has its own Group Leaderboard.
+    
 **Event Group Leaderboard:**
   - Individual users' event scores are posted in the group.
   - The overall group score is calculated as the sum of all users' scores in that specific group.
   - Each event has its own Group Leaderboard.
+    
 **Total Power Leaderboard:**
   - Individual users' card collection scores are posted in the leaderboard.
   - The overall group score is calculated as the sum of all users' scores in that specific group.
