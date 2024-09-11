@@ -9,6 +9,9 @@ Beamable Leaderboards example with minimalist design.
   - Individual users' event scores are posted in the group.
   - The overall group score is calculated as the sum of all users' scores in that specific group.
   - Each event has its own Group Leaderboard.
+**Total Power Leaderboard:**
+  - Individual users' card collection scores are posted in the leaderboard.
+  - The overall group score is calculated as the sum of all users' scores in that specific group.
 
 ***Requirements:***
 
@@ -22,7 +25,7 @@ Beamable Leaderboards example with minimalist design.
    - Group leaderboards will have a rewarding system.
 
 *Score Updates:*
-  - Scores need to be updatable by every member of the group, as well as through C# MS.
+  - Scores are updatable by every member of the group, as well as through C# MS.
   - Scores can increase or decrease based on group joining/leaving
 
 *Banning/Unbanning of Groups:*
