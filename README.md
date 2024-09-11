@@ -12,6 +12,7 @@ Beamable Leaderboards example with minimalist design.
 **Total Power Leaderboard:**
   - Individual users' card collection scores are posted in the leaderboard.
   - The overall group score is calculated as the sum of all users' scores in that specific group.
+    
 
 ***Requirements:***
 
